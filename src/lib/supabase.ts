@@ -12,96 +12,165 @@ if (!supabaseAnonKey) {
 }
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
-// Database types (we'll expand these as we build)
+// Database types
 export type Database = {
   public: {
     Tables: {
       games: {
         Row: {
-          id: number
+          id: string
           rawg_id: number
-          slug: string
           name: string
-          genres: string[]
-          tags: string[]
+          slug: string
+          description: string | null
           released: string | null
-          rating: number | null
-          metacritic: number | null
           background_image: string | null
+          website: string | null
+          rating: number | null
+          rating_top: number | null
+          metacritic: number | null
+          playtime: number | null
+          platforms: any | null
+          genres: any | null
+          tags: any | null
+          developers: any | null
+          publishers: any | null
+          stores: any | null
+          created_at: string
           updated_at: string
         }
         Insert: {
-          id?: number
+          id?: string
           rawg_id: number
-          slug: string
           name: string
-          genres?: string[]
-          tags?: string[]
+          slug: string
+          description?: string | null
           released?: string | null
-          rating?: number | null
-          metacritic?: number | null
           background_image?: string | null
+          website?: string | null
+          rating?: number | null
+          rating_top?: number | null
+          metacritic?: number | null
+          playtime?: number | null
+          platforms?: any | null
+          genres?: any | null
+          tags?: any | null
+          developers?: any | null
+          publishers?: any | null
+          stores?: any | null
+          created_at?: string
           updated_at?: string
         }
         Update: {
-          id?: number
+          id?: string
           rawg_id?: number
-          slug?: string
           name?: string
-          genres?: string[]
-          tags?: string[]
+          slug?: string
+          description?: string | null
           released?: string | null
-          rating?: number | null
-          metacritic?: number | null
           background_image?: string | null
+          website?: string | null
+          rating?: number | null
+          rating_top?: number | null
+          metacritic?: number | null
+          playtime?: number | null
+          platforms?: any | null
+          genres?: any | null
+          tags?: any | null
+          developers?: any | null
+          publishers?: any | null
+          stores?: any | null
+          created_at?: string
           updated_at?: string
         }
       }
-      profiles: {
+      user_interactions: {
         Row: {
+          id: string
           user_id: string
-          username: string | null
+          game_id: string
+          action: 'like' | 'favorite' | 'played'
           created_at: string
         }
         Insert: {
+          id?: string
           user_id: string
-          username?: string | null
+          game_id: string
+          action: 'like' | 'favorite' | 'played'
           created_at?: string
         }
         Update: {
+          id?: string
           user_id?: string
-          username?: string | null
+          game_id?: string
+          action?: 'like' | 'favorite' | 'played'
           created_at?: string
         }
       }
-      interactions: {
+      similar_games: {
         Row: {
-          id: number
-          user_id: string
-          game_id: number
-          action: 'view' | 'like' | 'favorite' | 'dismiss' | 'rate' | 'played'
-          rating: number | null
+          id: string
+          game_id: string
+          similar_game_id: string
+          similarity_score: number
           created_at: string
         }
         Insert: {
-          id?: number
-          user_id: string
-          game_id: number
-          action: 'view' | 'like' | 'favorite' | 'dismiss' | 'rate' | 'played'
-          rating?: number | null
+          id?: string
+          game_id: string
+          similar_game_id: string
+          similarity_score: number
           created_at?: string
         }
         Update: {
-          id?: number
-          user_id?: string
-          game_id?: number
-          action?: 'view' | 'like' | 'favorite' | 'dismiss' | 'rate' | 'played'
-          rating?: number | null
+          id?: string
+          game_id?: string
+          similar_game_id?: string
+          similarity_score?: number
           created_at?: string
+        }
+      }
+      recommendations: {
+        Row: {
+          id: string
+          user_id: string
+          game_id: string
+          score: number
+          reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          game_id: string
+          score: number
+          reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          game_id?: string
+          score?: number
+          reason?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      interaction_action: 'like' | 'favorite' | 'played'
+    }
   }
 }
+
