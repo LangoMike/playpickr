@@ -12,7 +12,7 @@ export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  // Try to get the game from our database first
+  // Try to get the game from database first
   const { data: game, error } = await supabase
     .from("games")
     .select("*")

@@ -155,7 +155,7 @@ export async function getPopularGames(
 }
 
 /**
- * Transform RAWG game data to match our database schema
+ * Transform RAWG game data to match database schema
  */
 export function transformRAWGGame(rawgGame: RAWGGame) {
   return {

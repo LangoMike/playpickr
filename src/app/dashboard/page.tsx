@@ -37,7 +37,7 @@ export default async function Dashboard() {
 
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {/* Your Picks */}
+        {/* Picks */}
         <Card className="gaming-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-400">
