@@ -1,5 +1,8 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+***Current landing page UI***
+<img width="1912" height="931" alt="image" src="https://github.com/user-attachments/assets/2bea6a19-73d7-41bf-b2f0-943910fd5c1c" />
+
 ## Getting Started
 
 First, run the development server:
