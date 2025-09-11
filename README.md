@@ -2,6 +2,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ***Current landing page UI***
 <img width="1912" height="931" alt="image" src="https://github.com/user-attachments/assets/2bea6a19-73d7-41bf-b2f0-943910fd5c1c" />
+***Current Sign-In page UI***
+<img width="1918" height="930" alt="image" src="https://github.com/user-attachments/assets/29ecac2d-6c66-4349-b598-015a960c9745" />
 
 ## Getting Started
 
