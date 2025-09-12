@@ -42,7 +42,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          id?: string
           rawg_id: number
           name: string
           slug: string
@@ -60,8 +59,6 @@ export type Database = {
           developers?: unknown | null
           publishers?: unknown | null
           stores?: unknown | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
@@ -91,21 +88,19 @@ export type Database = {
           id: string
           user_id: string
           game_id: string
-          action: 'like' | 'favorite' | 'played'
+          action: Database['public']['Enums']['interaction_action']
           created_at: string
         }
         Insert: {
-          id?: string
           user_id: string
           game_id: string
-          action: 'like' | 'favorite' | 'played'
-          created_at?: string
+          action: Database['public']['Enums']['interaction_action']
         }
         Update: {
           id?: string
           user_id?: string
           game_id?: string
-          action?: 'like' | 'favorite' | 'played'
+          action?: Database['public']['Enums']['interaction_action']
           created_at?: string
         }
       }
@@ -118,11 +113,9 @@ export type Database = {
           created_at: string
         }
         Insert: {
-          id?: string
           game_id: string
           similar_game_id: string
           similarity_score: number
-          created_at?: string
         }
         Update: {
           id?: string
@@ -143,13 +136,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          id?: string
           user_id: string
           game_id: string
           score: number
           reason?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
