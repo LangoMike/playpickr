@@ -98,7 +98,7 @@ export async function searchGames(
   query: string,
   page: number = 1,
   pageSize: number = 20
-): Promise<RAWSearchResult> {
+): Promise<RAWGSearchResult> {
   const apiKey = getRAWGApiKey()
   const params = new URLSearchParams({
     key: apiKey,
@@ -129,11 +129,43 @@ export async function searchGames(
 export async function getPopularGames(
   page: number = 1,
   pageSize: number = 20
-): Promise<RAWSearchResult> {
+): Promise<RAWGSearchResult> {
   const apiKey = getRAWGApiKey()
   const params = new URLSearchParams({
     key: apiKey,
     ordering: '-rating',
+    page: page.toString(),
+    page_size: pageSize.toString(),
+  })
+
+  const response = await fetch(
+    `https://api.rawg.io/api/games?${params}`,
+    {
+      headers: {
+        'Accept': 'application/json',
+      },
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`RAWG API error: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+/**
+ * Get trending games from RAWG API (based on player counts and release date)
+ */
+export async function getTrendingGames(
+  page: number = 1,
+  pageSize: number = 20,
+  ordering: string = '-added'
+): Promise<RAWGSearchResult> {
+  const apiKey = getRAWGApiKey()
+  const params = new URLSearchParams({
+    key: apiKey,
+    ordering: ordering,
     page: page.toString(),
     page_size: pageSize.toString(),
   })

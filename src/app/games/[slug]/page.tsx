@@ -25,7 +25,7 @@ export default async function GamePage({ params }: GamePageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <GameInteractions game={game} />
+      <GameInteractions gameId={game} />
     </div>
   );
 }
