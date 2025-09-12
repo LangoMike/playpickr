@@ -12,7 +12,7 @@ if (!supabaseAnonKey) {
 }
 
 // Create a single supabase client for interacting with database
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Database types
 export type Database = {
