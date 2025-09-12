@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
         }
 
         // Check for code parameter (OAuth flow)
-        const code = searchParams.get("code");
+        const code = searchParams?.get("code");
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
 
