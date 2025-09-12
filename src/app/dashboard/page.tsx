@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -119,7 +114,7 @@ export default function Dashboard() {
           {/* Daily Spotlight */}
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold text-white mb-4">
-              🎯 Today's Spotlight
+              🎯 Today&apos;s Spotlight
             </h2>
             {gamesLoading ? (
               <div className="gaming-card animate-pulse">
@@ -128,12 +123,12 @@ export default function Dashboard() {
             ) : games.length > 0 ? (
               <div className="gaming-card overflow-hidden">
                 <div className="relative h-64">
-                   <Image
-                     src={games[0].background_image}
-                     alt={games[0].name}
-                     fill
-                     className="object-cover"
-                   />
+                  <Image
+                    src={games[0].background_image}
+                    alt={games[0].name}
+                    fill
+                    className="object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-2xl font-bold text-white mb-2">
@@ -263,7 +258,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="text-sm text-gray-300">Rising fast</div>
                 <div className="text-lg font-semibold text-white">
-                  Baldur's Gate 3
+                  Baldur&apos;s Gate 3
                 </div>
                 <div className="text-sm text-gray-400">
                   +1,892 players this week

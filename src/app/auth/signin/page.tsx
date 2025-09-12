@@ -141,7 +141,7 @@ export default function SignInPage() {
             <CardHeader>
               <CardTitle className="text-center">Magic Link</CardTitle>
               <CardDescription className="text-center">
-                Enter your email and we'll send you a magic link to sign in
+                Enter your email and we&apos;ll send you a magic link to sign in
               </CardDescription>
             </CardHeader>
             <CardContent>

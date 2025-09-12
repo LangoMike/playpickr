@@ -64,7 +64,7 @@ export default function MyLibraryPage() {
           </CardHeader>
           <CardContent>
             <CardDescription className="mb-4">
-              Games you've liked and want to play
+              Games you&apos;ve liked and want to play
             </CardDescription>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-400 mb-2">0</div>
@@ -100,7 +100,7 @@ export default function MyLibraryPage() {
           </CardHeader>
           <CardContent>
             <CardDescription className="mb-4">
-              Games you've completed or played before
+              Games you&apos;ve completed or played before
             </CardDescription>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-400 mb-2">0</div>
@@ -121,8 +121,8 @@ export default function MyLibraryPage() {
           <CardContent>
             <CardDescription className="mb-6 text-lg">
               Begin exploring games and building your personal collection. Like
-              games you're interested in, mark favorites, and track what you've
-              played.
+              games you&apos;re interested in, mark favorites, and track what
+              you&apos;ve played.
             </CardDescription>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button className="gaming-button px-8 py-3">Browse Games</Button>
