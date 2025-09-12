@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +18,6 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const router = useRouter();
 
   const handleOAuthSignIn = async (provider: "google" | "github") => {
     setLoading(true);

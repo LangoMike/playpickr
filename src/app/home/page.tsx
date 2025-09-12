@@ -19,7 +19,7 @@ export default function Home() {
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
           PlayPickr uses AI-powered recommendations to help you find games
-          you'll love. Browse, like, and discover your next gaming adventure.
+          you&apos;ll love. Browse, like, and discover your next gaming adventure.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/auth/signin">
@@ -53,7 +53,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Our AI learns from your preferences to suggest games you'll
+                Our AI learns from your preferences to suggest games you&apos;ll
                 actually want to play.
               </CardDescription>
             </CardContent>

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -13,15 +12,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GameCard } from "@/components/GameCard";
-import { OrderByDropdown } from "@/components/OrderByDropdown";
 import { RAWGGame, RAWGSearchResult } from "@/lib/rawg";
+import Image from "next/image";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [games, setGames] = useState<RAWGGame[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
-  const [currentOrder, setCurrentOrder] = useState("-added");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,7 +32,7 @@ export default function Dashboard() {
       try {
         setGamesLoading(true);
         const response = await fetch(
-          `/api/games/trending?ordering=${currentOrder}&pageSize=12`
+          `/api/games/trending?ordering=-added&pageSize=12`
         );
         if (response.ok) {
           const data: RAWGSearchResult = await response.json();
@@ -50,7 +48,7 @@ export default function Dashboard() {
     if (user) {
       fetchTrendingGames();
     }
-  }, [user, currentOrder]);
+  }, [user]);
 
   if (loading) {
     return (
@@ -130,11 +128,12 @@ export default function Dashboard() {
             ) : games.length > 0 ? (
               <div className="gaming-card overflow-hidden">
                 <div className="relative h-64">
-                  <img
-                    src={games[0].background_image}
-                    alt={games[0].name}
-                    className="w-full h-full object-cover"
-                  />
+                   <Image
+                     src={games[0].background_image}
+                     alt={games[0].name}
+                     fill
+                     className="object-cover"
+                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-2xl font-bold text-white mb-2">

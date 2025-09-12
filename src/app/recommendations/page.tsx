@@ -65,7 +65,7 @@ export default function RecommendationsPage() {
             <CardContent>
               <CardDescription className="mb-6 text-lg">
                 Our AI-powered recommendation engine is currently being
-                developed. Soon you'll receive personalized game suggestions
+                developed. Soon you&apos;ll receive personalized game suggestions
                 based on your preferences, playing history, and favorite genres.
               </CardDescription>
 
@@ -85,7 +85,7 @@ export default function RecommendationsPage() {
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
                   <span className="text-gray-300">
-                    Suggest games you'll love
+                    Suggest games you&apos;ll love
                   </span>
                 </div>
               </div>

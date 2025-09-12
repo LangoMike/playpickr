@@ -32,12 +32,12 @@ export type Database = {
           rating_top: number | null
           metacritic: number | null
           playtime: number | null
-          platforms: any | null
-          genres: any | null
-          tags: any | null
-          developers: any | null
-          publishers: any | null
-          stores: any | null
+          platforms: unknown | null
+          genres: unknown | null
+          tags: unknown | null
+          developers: unknown | null
+          publishers: unknown | null
+          stores: unknown | null
           created_at: string
           updated_at: string
         }
@@ -54,12 +54,12 @@ export type Database = {
           rating_top?: number | null
           metacritic?: number | null
           playtime?: number | null
-          platforms?: any | null
-          genres?: any | null
-          tags?: any | null
-          developers?: any | null
-          publishers?: any | null
-          stores?: any | null
+          platforms?: unknown | null
+          genres?: unknown | null
+          tags?: unknown | null
+          developers?: unknown | null
+          publishers?: unknown | null
+          stores?: unknown | null
           created_at?: string
           updated_at?: string
         }
@@ -76,12 +76,12 @@ export type Database = {
           rating_top?: number | null
           metacritic?: number | null
           playtime?: number | null
-          platforms?: any | null
-          genres?: any | null
-          tags?: any | null
-          developers?: any | null
-          publishers?: any | null
-          stores?: any | null
+          platforms?: unknown | null
+          genres?: unknown | null
+          tags?: unknown | null
+          developers?: unknown | null
+          publishers?: unknown | null
+          stores?: unknown | null
           created_at?: string
           updated_at?: string
         }
