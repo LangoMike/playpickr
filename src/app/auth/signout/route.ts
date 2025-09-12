@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase-server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   const supabase = await createClient()
   
+  // Sign out the user
   await supabase.auth.signOut()
   
-  return NextResponse.redirect(new URL('/home', request.url))
+  // Redirect to home page
+  return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'))
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,19 +8,38 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEffect } from "react";
 
-export default async function Dashboard() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function Dashboard() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  // if user is not authenticated, redirect to sign in
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/signin");
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto text-center">
+          <div className="gaming-card p-8">
+            <h2 className="text-xl font-semibold mb-4">Loading...</h2>
+            <p className="text-muted-foreground">
+              Please wait while we load your dashboard.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
-    redirect("/auth/signin");
+    return null; // Will redirect in useEffect
   }
 
   // Dashboard for authenticated users only

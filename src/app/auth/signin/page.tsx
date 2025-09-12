@@ -38,7 +38,6 @@ export default function SignInPage() {
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
-    } finally {
       setLoading(false);
     }
   };
