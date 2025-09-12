@@ -19,21 +19,13 @@ export default function Home() {
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
           PlayPickr uses AI-powered recommendations to help you find games
-          you&apos;ll love. Browse, like, and discover your next gaming adventure.
+          you&apos;ll love. Browse, like, and discover your next gaming
+          adventure.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/auth/signin">
             <Button size="lg" className="text-lg px-8 gaming-button">
               Get Started Free
-            </Button>
-          </Link>
-          <Link href="/games/grand-theft-auto-v">
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 border-2 border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
-            >
-              Test Game Page
             </Button>
           </Link>
         </div>
@@ -97,22 +89,6 @@ export default function Home() {
         <p className="text-muted-foreground mb-8">
           Join thousands of gamers discovering their next favorite titles.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/auth/signin">
-            <Button size="lg" className="text-lg px-8 gaming-button">
-              Get Started Free
-            </Button>
-          </Link>
-          <Link href="/games/grand-theft-auto-v">
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 border-2 border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
-            >
-              Test Game Page
-            </Button>
-          </Link>
-        </div>
       </section>
     </div>
   );
