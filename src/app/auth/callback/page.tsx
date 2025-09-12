@@ -16,7 +16,7 @@ export default function AuthCallbackPage() {
         setLoading(true);
 
         // Get the next redirect URL
-        const next = searchParams.get("next") || "/dashboard";
+        const next = searchParams?.get("next") || "/dashboard";
 
         // Check for access_token in URL hash (magic link)
         if (window.location.hash) {
