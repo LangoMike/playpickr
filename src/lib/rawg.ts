@@ -208,5 +208,7 @@ export function transformRAWGGame(rawgGame: RAWGGame) {
     developers: rawgGame.developers || null,
     publishers: rawgGame.publishers || null,
     stores: rawgGame.stores ? rawgGame.stores.map(s => s.store) : null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   }
 }
