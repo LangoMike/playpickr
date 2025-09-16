@@ -5,8 +5,10 @@ export interface RAWGGame {
   name: string
   slug: string
   description: string
+  description_raw: string
   released: string
   background_image: string
+  background_image_additional: string
   website: string
   rating: number
   rating_top: number
@@ -45,6 +47,19 @@ export interface RAWGGame {
       id: number
       name: string
       slug: string
+    }
+  }>
+  short_screenshots?: Array<{
+    id: number
+    image: string
+  }>
+  movies?: Array<{
+    id: number
+    name: string
+    preview: string
+    data: {
+      '480': string
+      max: string
     }
   }>
 }

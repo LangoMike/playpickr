@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { GameInteractions } from "@/components/GameInteractions";
+import { fetchGameBySlug, RAWGGame } from "@/lib/rawg";
+import { GameDetailPage } from "@/components/GameDetailPage";
 
 interface GamePageProps {
   params: Promise<{
@@ -10,22 +11,14 @@ interface GamePageProps {
 
 export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  // Try to get the game from database first
-  const { data: game, error } = await supabase
-    .from("games")
-    .select("*")
-    .eq("slug", slug)
-    .single();
+  try {
+    // Fetch game data from RAWG API
+    const game: RAWGGame = await fetchGameBySlug(slug);
 
-  if (error || !game) {
+    return <GameDetailPage game={game} />;
+  } catch (error) {
+    console.error("Error fetching game:", error);
     notFound();
   }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <GameInteractions gameId={game} />
-    </div>
-  );
 }

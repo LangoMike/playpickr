@@ -202,7 +202,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="text-sm text-purple-400">
-            <span className="font-semibold">87%</span> personalized
+            <span className="font-semibold">~%</span> personalized
           </div>
         </div>
 
@@ -226,8 +226,8 @@ export default function Dashboard() {
           </div>
         )}
       </section>
-
-      {/* Trending by Genre */}
+      
+      {/* PLACEHOLDER:Trending by Genre - will be replaced with a more dynamic section*/}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-white mb-6">
           🔥 Trending by Genre
@@ -284,7 +284,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Fun Fact Widget */}
+      {/* Fun Fact Widget - adding more facts after mvp completion */}
       <section className="mb-12">
         <Card className="gaming-card bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-500/30">
           <CardContent className="p-6">

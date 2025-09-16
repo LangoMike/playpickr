@@ -5,14 +5,31 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     
-    // check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Check for Authorization header first
+    const authHeader = request.headers.get('Authorization')
+    let user = null
     
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      )
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      // Use the token from the Authorization header
+      const token = authHeader.substring(7)
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
+      
+      if (!tokenError && tokenUser) {
+        user = tokenUser
+      }
+    }
+    
+    // Fallback to session-based auth
+    if (!user) {
+      const { data: { user: sessionUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !sessionUser) {
+        return NextResponse.json(
+          { success: false, error: 'Authentication required' },
+          { status: 401 }
+        )
+      }
+      user = sessionUser
     }
 
     const body = await request.json()

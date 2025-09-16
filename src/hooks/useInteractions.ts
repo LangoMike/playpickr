@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './useAuth'
+import { supabase } from '@/lib/supabase'
 
 interface InteractionState {
   liked: boolean
@@ -58,10 +59,20 @@ export function useInteractions(gameId: string) {
     setState(prev => ({ ...prev, loading: true }))
 
     try {
+      // Get the current session to include auth headers
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        alert('Please sign in to interact with games')
+        setState(prev => ({ ...prev, loading: false }))
+        return
+      }
+
       const response = await fetch('/api/interactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           gameId,

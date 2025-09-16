@@ -1,18 +1,46 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 
 export function Header() {
   const { user, loading } = useAuth();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      console.log("Attempting to sign out...");
+
+      // Sign out from Supabase with redirect
+      const { error } = await supabase.auth.signOut({
+        scope: "local", // This ensures local session is cleared
+      });
+
+      if (error) {
+        console.error("Sign out error:", error);
+        throw error;
+      }
+
+      console.log("Sign out successful");
+
+      // Clear any local storage/session storage
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+
+      // Force a hard redirect to ensure the session is cleared
+      window.location.href = "/home";
     } catch (error) {
       console.error("Error signing out:", error);
+      // Even if there's an error, try to redirect and clear storage
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "/home";
+      }
     }
   };
 
@@ -73,7 +101,7 @@ export function Header() {
                 </Link>
               </nav>
 
-              {/* User Info and Sign Out - Right aligned */}
+              {/* User Info and Sign Out*/}
               <div className="flex items-center gap-4 ml-auto">
                 <span className="text-gray-300 text-sm">
                   {user.user_metadata?.full_name || user.email?.split("@")[0]}
