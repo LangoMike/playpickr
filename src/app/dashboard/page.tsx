@@ -135,7 +135,7 @@ export default function Dashboard() {
                       {games[0].name}
                     </h3>
                     <p className="text-gray-300 mb-4">
-                      Handpicked just for you based on your preferences
+                      Handpicked games just for you, based on your preferences
                     </p>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-1">
@@ -226,7 +226,7 @@ export default function Dashboard() {
           </div>
         )}
       </section>
-      
+
       {/* PLACEHOLDER:Trending by Genre - will be replaced with a more dynamic section*/}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-white mb-6">
@@ -244,7 +244,7 @@ export default function Dashboard() {
                   Cyberpunk 2077
                 </div>
                 <div className="text-sm text-gray-400">
-                  +2,341 players this week
+                  +2,641 players this week
                 </div>
               </div>
             </CardContent>
@@ -261,7 +261,7 @@ export default function Dashboard() {
                   Baldur&apos;s Gate 3
                 </div>
                 <div className="text-sm text-gray-400">
-                  +1,892 players this week
+                  +1,992 players this week
                 </div>
               </div>
             </CardContent>
