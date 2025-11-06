@@ -2,30 +2,33 @@
  * Recommendation System Utilities
  * 
  * Handles loading the trained TensorFlow model and generating recommendations
+ * 
+ * Note: For Vercel deployment, we use @tensorflow/tfjs (browser version) instead of
+ * @tensorflow/tfjs-node to avoid serverless function size limits.
+ * Models should be stored in Supabase Storage or a CDN and loaded via URL.
  */
 
-// Use dynamic import for tfjs-node to avoid SSR issues
-import type * as tfjs from '@tensorflow/tfjs-node';
-import type * as pathModule from 'path';
-import type * as fsModule from 'fs/promises';
+// Use @tensorflow/tfjs (browser version) which is much smaller than tfjs-node
+// This can load models from URLs (Supabase Storage, CDN, etc.)
+let tf: any = null;
+let model: any = null;
+let metadata: ModelMetadata | null = null;
 
-let tf: typeof tfjs | null = null;
-let path: typeof pathModule | null = null;
-let fs: typeof fsModule | null = null;
-
-// Initialize TensorFlow.js Node backend
+// Initialize TensorFlow.js
 async function initTensorFlow() {
   if (typeof window === 'undefined') {
-    // Server-side: use tfjs-node
-    tf = await import('@tensorflow/tfjs-node') as typeof tfjs;
-    path = await import('path') as typeof pathModule;
-    fs = await import('fs/promises') as typeof fsModule;
+    // Server-side: use regular tfjs (browser version) - works in Node.js and is much smaller
+    try {
+      tf = await import('@tensorflow/tfjs');
+      // Use CPU backend for serverless (no GPU needed)
+      await tf.setBackend('cpu');
+      await tf.ready();
+    } catch (error) {
+      console.warn('Failed to load TensorFlow.js:', error);
+      throw new Error('TensorFlow.js is not available. Falling back to popularity-based recommendations.');
+    }
   }
 }
-
-type TensorFlowModel = Awaited<ReturnType<typeof tfjs.loadLayersModel>>;
-let model: TensorFlowModel | null = null;
-let metadata: ModelMetadata | null = null;
 
 interface ModelMetadata {
   gameIdToIndex: Record<string, number>;
@@ -47,6 +50,10 @@ interface ModelMetadata {
 
 /**
  * Load the trained model and metadata
+ * 
+ * For production (Vercel), models should be stored in Supabase Storage or a CDN.
+ * Set MODEL_BASE_URL environment variable to the URL where models are hosted.
+ * For local development, models can be loaded from the filesystem using a local server.
  */
 export async function loadModel(): Promise<void> {
   if (model && metadata) {
@@ -55,40 +62,54 @@ export async function loadModel(): Promise<void> {
 
   // Initialize TensorFlow if needed
   if (!tf) {
-    await initTensorFlow();
+    try {
+      await initTensorFlow();
+    } catch (error) {
+      // TensorFlow not available - this is okay, we'll use popularity-based recommendations
+      console.warn('TensorFlow.js not available, will use popularity-based recommendations');
+      return;
+    }
+  }
+
+  if (!tf) {
+    throw new Error('TensorFlow not initialized');
   }
 
   try {
-    if (!path || !fs) {
-      throw new Error('Path or fs module not initialized');
-    }
+    // Try to load from URL (for production/Vercel)
+    // Check for MODEL_BASE_URL environment variable (e.g., Supabase Storage URL)
+    const modelBaseUrl = process.env.MODEL_BASE_URL;
     
-    const modelDir = path.join(process.cwd(), 'models', 'recommendation-model');
-    
-    // Check if model exists
-    try {
-      await fs.access(modelDir);
-    } catch {
-      throw new Error(
-        `Model not found at ${modelDir}. Please run 'npm run train:recommendations' first.`
-      );
+    if (modelBaseUrl) {
+      // Load from remote URL (Supabase Storage, CDN, etc.)
+      const modelUrl = `${modelBaseUrl}/model.json`;
+      const metadataUrl = `${modelBaseUrl}/metadata.json`;
+      
+      // Load metadata
+      const metadataResponse = await fetch(metadataUrl);
+      if (!metadataResponse.ok) {
+        throw new Error(`Failed to load metadata from ${metadataUrl}`);
+      }
+      metadata = await metadataResponse.json() as ModelMetadata;
+      
+      // Load model
+      model = await tf.loadLayersModel(modelUrl);
+      console.log('✅ Recommendation model loaded from URL successfully');
+      return;
     }
 
-    // Load metadata
-    const metadataPath = path.join(modelDir, 'metadata.json');
-    const metadataContent = await fs.readFile(metadataPath, 'utf-8');
-    metadata = JSON.parse(metadataContent) as ModelMetadata;
-
-    if (!tf) {
-      throw new Error('TensorFlow not initialized');
-    }
-    // Load model
-    model = await tf.loadLayersModel(`file://${path.join(modelDir, 'model.json')}`);
-    
-    console.log('✅ Recommendation model loaded successfully');
+    // Fallback: Try to load from filesystem (for local development)
+    // This requires a local file server or the model to be in public/ directory
+    // Note: This won't work in Vercel serverless functions
+    throw new Error(
+      'Model loading not configured. ' +
+      'For production, set MODEL_BASE_URL environment variable pointing to your model files. ' +
+      'For local development, use a local file server or store models in public/ directory.'
+    );
   } catch (error) {
     console.error('❌ Failed to load recommendation model:', error);
-    throw error;
+    // Don't throw - allow fallback to popularity-based recommendations
+    console.warn('Will use popularity-based recommendations as fallback');
   }
 }
 
@@ -176,11 +197,15 @@ export async function generateRecommendations(
   games: GameWithId[],
   userInteractions: UserInteraction[]
 ): Promise<Array<{ gameId: string; score: number; reason: string }>> {
+  // Try to load model if not already loaded
   if (!model || !metadata) {
     await loadModel();
-    if (!model || !metadata) {
-      throw new Error('Failed to load recommendation model');
-    }
+  }
+  
+  // If model failed to load, fall back to popularity-based recommendations
+  if (!model || !metadata) {
+    console.warn('ML model not available, using popularity-based recommendations');
+    return getPopularityRecommendations(games, 20);
   }
 
   const userIndex = metadata.userIdToIndex[userId];
@@ -222,7 +247,7 @@ export async function generateRecommendations(
     const featureTensor = tf.tensor2d([features]);
 
     // Predict
-    const prediction = model.predict([userTensor, gameTensor, featureTensor]) as tfjs.Tensor;
+    const prediction = model.predict([userTensor, gameTensor, featureTensor]);
     const score = await prediction.data();
 
     // Clean up tensors
