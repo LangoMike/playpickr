@@ -108,36 +108,6 @@ Once the model is trained:
 For detailed information about the recommendation system, see:
 - **[TRAINING_GUIDE.md](./TRAINING_GUIDE.md)**: Comprehensive guide covering architecture, training, validation, deployment, and troubleshooting
 
-## Project Structure
-
-```
-playpickr/
-├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── api/               # API routes
-│   │   │   ├── recommendations/ # Recommendation endpoints
-│   │   │   ├── games/          # Game data endpoints
-│   │   │   └── interactions/   # User interaction endpoints
-│   │   ├── auth/              # Authentication pages
-│   │   ├── dashboard/         # Dashboard page
-│   │   ├── games/             # Game browsing pages
-│   │   ├── my-library/        # User library page
-│   │   └── recommendations/   # Recommendations page
-│   ├── components/            # React components
-│   │   ├── auth/              # Authentication components
-│   │   └── ui/                # UI components (Radix UI)
-│   ├── hooks/                 # Custom React hooks
-│   └── lib/                   # Utility libraries
-│       ├── recommendations.ts # Recommendation system logic
-│       ├── rawg.ts            # RAWG API integration
-│       └── supabase.ts        # Supabase client setup
-├── scripts/
-│   └── train-recommendations.js # Model training script
-├── models/                     # Trained model files (generated)
-│   └── recommendation-model/
-├── TRAINING_GUIDE.md          # Recommendation system guide
-└── package.json
-```
 
 ## Available Scripts
 
@@ -179,7 +149,7 @@ The application uses Supabase with the following main tables:
 1. Create feature branch: `git checkout -b feature/your-feature`
 2. Make your changes
 3. Test thoroughly
-4. Commit using clear messages (see COMMIT_MESSAGES.md for examples)
+4. Commit using clear messages
 5. Push and create pull request
 
 ### Code Style
@@ -189,18 +159,6 @@ The application uses Supabase with the following main tables:
 - Tailwind CSS for styling
 - Component-based architecture with React
 
-## Deployment
-
-The application is deployed on Vercel. For production deployment:
-
-1. Ensure all environment variables are set in Vercel
-2. Build the application: `npm run build`
-3. Deploy to Vercel (automatic via Git integration)
-
-**Note**: If deploying the recommendation system, ensure model files are either:
-- Generated on first deployment via training script
-- Stored in cloud storage (S3, Supabase Storage) and loaded at runtime
-- Committed to repository (if using Git LFS for large files)
 
 ## Troubleshooting
 
@@ -213,11 +171,6 @@ See **[TRAINING_GUIDE.md](./TRAINING_GUIDE.md)** for comprehensive troubleshooti
 - Cold start scenarios
 - Performance optimization
 
-### General Issues
-
-- **Authentication errors**: Verify Supabase environment variables
-- **API errors**: Check RAWG API key and rate limits
-- **Build errors**: Ensure all dependencies are installed (`npm install`)
 
 ## Contributing
 
@@ -230,7 +183,7 @@ Contributions are welcome! Please:
 
 ## License
 
-[Add your license here]
+MIT License
 
 ## Learn More
 
