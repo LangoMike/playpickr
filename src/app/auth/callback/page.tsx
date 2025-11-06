@@ -15,10 +15,18 @@ function AuthCallbackContent() {
       try {
         setLoading(true);
 
-        // Use the shared client instance which should have access to the code verifier cookie
-
         // Get the next redirect URL
         const next = searchParams?.get("next") || "/dashboard";
+
+        // First, check if user is already authenticated
+        // This handles cases where the session was set but the callback still shows an error
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        if (existingSession?.user) {
+          // User is already authenticated, just redirect
+          console.log('User already authenticated, redirecting...')
+          router.push(next)
+          return
+        }
 
         // Check for access_token in URL hash (magic link)
         if (window.location.hash) {
@@ -64,6 +72,16 @@ function AuthCallbackContent() {
                 message: error.message,
                 status: error.status,
               });
+              
+              // Check again if user got authenticated despite the error
+              // Sometimes the session is set even if exchangeCodeForSession returns an error
+              const { data: { session: sessionAfterError } } = await supabase.auth.getSession()
+              if (sessionAfterError?.user) {
+                console.log('Session was set despite error, redirecting...')
+                router.push(next)
+                return
+              }
+              
               setError(`Failed to authenticate: ${error.message}. Please try signing in again.`);
               return;
             }
@@ -76,17 +94,40 @@ function AuthCallbackContent() {
               router.push(next);
               return;
             } else {
+              // Check if session exists even if not returned
+              const { data: { session: fallbackSession } } = await supabase.auth.getSession()
+              if (fallbackSession?.user) {
+                router.push(next)
+                return
+              }
+              
               setError("No session returned from authentication");
               return;
             }
           } catch (exchangeError) {
             console.error("Code exchange error:", exchangeError);
+            
+            // Check if user got authenticated despite the error
+            const { data: { session: sessionAfterException } } = await supabase.auth.getSession()
+            if (sessionAfterException?.user) {
+              console.log('Session was set despite exception, redirecting...')
+              router.push(next)
+              return
+            }
+            
             setError(`Authentication failed: ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}. Please try signing in again.`);
             return;
           }
         }
 
         // No valid authentication parameters found
+        // But check one more time if user is authenticated (maybe from a previous attempt)
+        const { data: { session: finalCheckSession } } = await supabase.auth.getSession()
+        if (finalCheckSession?.user) {
+          router.push(next)
+          return
+        }
+
         setError("No authentication parameters found");
       } catch (err) {
         console.error("Auth callback error:", err);
