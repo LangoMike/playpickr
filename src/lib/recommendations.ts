@@ -1,0 +1,250 @@
+/**
+ * Recommendation System Utilities
+ * 
+ * Handles loading the trained TensorFlow model and generating recommendations
+ */
+
+// Use dynamic import for tfjs-node to avoid SSR issues
+let tf: any;
+let path: any;
+let fs: any;
+
+// Initialize TensorFlow.js Node backend
+async function initTensorFlow() {
+  if (typeof window === 'undefined') {
+    // Server-side: use tfjs-node
+    tf = await import('@tensorflow/tfjs-node');
+    path = await import('path');
+    fs = await import('fs/promises');
+  }
+}
+
+let model: any = null;
+let metadata: any = null;
+
+interface ModelMetadata {
+  gameIdToIndex: Record<string, number>;
+  userIdToIndex: Record<string, number>;
+  indexToGameId: Record<number, string>;
+  indexToUserId: Record<number, string>;
+  featureSize: number;
+  numUsers: number;
+  numGames: number;
+  genreList: string[];
+  tagList: string[];
+  platformList: string[];
+  config: any;
+  trainedAt: string;
+}
+
+/**
+ * Load the trained model and metadata
+ */
+export async function loadModel(): Promise<void> {
+  if (model && metadata) {
+    return; // Already loaded
+  }
+
+  // Initialize TensorFlow if needed
+  if (!tf) {
+    await initTensorFlow();
+  }
+
+  try {
+    const modelDir = path.join(process.cwd(), 'models', 'recommendation-model');
+    
+    // Check if model exists
+    try {
+      await fs.access(modelDir);
+    } catch {
+      throw new Error(
+        `Model not found at ${modelDir}. Please run 'npm run train:recommendations' first.`
+      );
+    }
+
+    // Load metadata
+    const metadataPath = path.join(modelDir, 'metadata.json');
+    const metadataContent = await fs.readFile(metadataPath, 'utf-8');
+    metadata = JSON.parse(metadataContent) as ModelMetadata;
+
+    // Load model
+    model = await tf.loadLayersModel(`file://${path.join(modelDir, 'model.json')}`);
+    
+    console.log('✅ Recommendation model loaded successfully');
+  } catch (error) {
+    console.error('❌ Failed to load recommendation model:', error);
+    throw error;
+  }
+}
+
+/**
+ * Extract game features (same as training script)
+ */
+function extractGameFeatures(game: any): number[] {
+  if (!metadata) {
+    throw new Error('Model metadata not loaded');
+  }
+
+  const features: number[] = [];
+
+  // One-hot encode genres
+  const genreVec = new Array(metadata.genreList.length).fill(0);
+  if (game.genres && Array.isArray(game.genres)) {
+    game.genres.forEach((g: any) => {
+      const genreName = g.name || g;
+      const idx = metadata.genreList.indexOf(genreName);
+      if (idx >= 0) genreVec[idx] = 1;
+    });
+  }
+  features.push(...genreVec);
+
+  // One-hot encode tags
+  const tagVec = new Array(metadata.tagList.length).fill(0);
+  if (game.tags && Array.isArray(game.tags)) {
+    game.tags.forEach((t: any) => {
+      const tagName = t.name || t;
+      const idx = metadata.tagList.indexOf(tagName);
+      if (idx >= 0) tagVec[idx] = 1;
+    });
+  }
+  features.push(...tagVec);
+
+  // Normalize ratings
+  const rating = game.rating ? game.rating / 5.0 : 0.5;
+  features.push(rating);
+
+  // Normalize metacritic
+  const metacritic = game.metacritic ? game.metacritic / 100.0 : 0.5;
+  features.push(metacritic);
+
+  // Normalize playtime
+  const playtime = game.playtime 
+    ? Math.min(Math.log10(game.playtime + 1) / Math.log10(101), 1.0)
+    : 0.5;
+  features.push(playtime);
+
+  // Release year
+  let releaseYear = 0.5;
+  if (game.released) {
+    const year = new Date(game.released).getFullYear();
+    const currentYear = new Date().getFullYear();
+    releaseYear = Math.min((year - 1990) / (currentYear - 1990), 1.0);
+  }
+  features.push(releaseYear);
+
+  return features;
+}
+
+/**
+ * Generate recommendations for a user
+ */
+export async function generateRecommendations(
+  userId: string,
+  games: any[],
+  userInteractions: any[]
+): Promise<Array<{ gameId: string; score: number; reason: string }>> {
+  if (!model || !metadata) {
+    await loadModel();
+    if (!model || !metadata) {
+      throw new Error('Failed to load recommendation model');
+    }
+  }
+
+  const userIndex = metadata.userIdToIndex[userId];
+  if (userIndex === undefined) {
+    // New user - return popularity-based recommendations
+    return [];
+  }
+
+  // Get games user has already interacted with
+  const interactedGameIds = new Set(
+    userInteractions.map(i => i.game_id)
+  );
+
+  // Filter out games user has already interacted with
+  const candidateGames = games.filter(
+    game => !interactedGameIds.has(game.id)
+  );
+
+  if (candidateGames.length === 0) {
+    return [];
+  }
+
+  // Generate predictions for all candidate games
+  const predictions: Array<{ gameId: string; score: number; features: number[] }> = [];
+
+  for (const game of candidateGames) {
+    const gameIndex = metadata.gameIdToIndex[game.id];
+    if (gameIndex === undefined) continue;
+
+    const features = extractGameFeatures(game);
+
+    // Create input tensors
+    const userTensor = tf.tensor2d([[userIndex]]);
+    const gameTensor = tf.tensor2d([[gameIndex]]);
+    const featureTensor = tf.tensor2d([features]);
+
+    // Predict
+    const prediction = model.predict([userTensor, gameTensor, featureTensor]) as tf.Tensor;
+    const score = await prediction.data();
+
+    // Clean up tensors
+    userTensor.dispose();
+    gameTensor.dispose();
+    featureTensor.dispose();
+    prediction.dispose();
+
+    predictions.push({
+      gameId: game.id,
+      score: score[0],
+      features
+    });
+  }
+
+  // Sort by score and get top N
+  predictions.sort((a, b) => b.score - a.score);
+  const topN = predictions.slice(0, metadata.config?.topNRecommendations || 20);
+
+  // Generate reasons for recommendations
+  const recommendations = topN.map(({ gameId, score, features }) => {
+    const game = games.find(g => g.id === gameId);
+    if (!game) return null;
+
+    // Generate reason based on features
+    let reason = 'Based on your preferences';
+    if (game.genres && game.genres.length > 0) {
+      const topGenres = game.genres.slice(0, 2).map((g: any) => g.name || g).join(', ');
+      reason = `Similar genres: ${topGenres}`;
+    }
+
+    return {
+      gameId,
+      score,
+      reason
+    };
+  }).filter(r => r !== null) as Array<{ gameId: string; score: number; reason: string }>;
+
+  return recommendations;
+}
+
+/**
+ * Get popularity-based recommendations (for cold start)
+ */
+export async function getPopularityRecommendations(
+  games: any[],
+  limit: number = 20
+): Promise<Array<{ gameId: string; score: number; reason: string }>> {
+  // Sort by rating and playtime
+  const sorted = [...games].sort((a, b) => {
+    const scoreA = (a.rating || 0) * (a.playtime || 0);
+    const scoreB = (b.rating || 0) * (b.playtime || 0);
+    return scoreB - scoreA;
+  });
+
+  return sorted.slice(0, limit).map(game => ({
+    gameId: game.id,
+    score: (game.rating || 0) / 5.0,
+    reason: 'Popular game with high ratings'
+  }));
+}
+
