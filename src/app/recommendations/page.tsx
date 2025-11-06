@@ -140,7 +140,7 @@ export default function RecommendationsPage() {
       website: game.website || "",
       rating: game.rating || 0,
       rating_top: game.rating_top || 5,
-      metacritic: game.metacritic || null,
+      metacritic: game.metacritic ?? 0,
       playtime: game.playtime || 0,
       platforms: Array.isArray(game.platforms)
         ? game.platforms.map((p) => {
