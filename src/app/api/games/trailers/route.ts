@@ -26,10 +26,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(trailers);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If game doesn't have trailers (404), return empty result instead of error
     // This is expected behavior, not an error
-    if (error?.message?.includes('404') || error?.message?.includes('not found')) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('404') || errorMessage.includes('not found')) {
       return NextResponse.json({
         count: 0,
         next: null,

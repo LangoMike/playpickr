@@ -20,12 +20,14 @@ function AuthCallbackContent() {
 
         // First, check if user is already authenticated
         // This handles cases where the session was set but the callback still shows an error
-        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        const {
+          data: { session: existingSession },
+        } = await supabase.auth.getSession();
         if (existingSession?.user) {
           // User is already authenticated, just redirect
-          console.log('User already authenticated, redirecting...')
-          router.push(next)
-          return
+          console.log("User already authenticated, redirecting...");
+          router.push(next);
+          return;
         }
 
         // Check for access_token in URL hash (magic link)
@@ -64,7 +66,9 @@ function AuthCallbackContent() {
           // retrieves the code verifier from cookies. The code verifier should have been
           // stored when the OAuth flow was initiated.
           try {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            const { data, error } = await supabase.auth.exchangeCodeForSession(
+              code
+            );
 
             if (error) {
               console.error("OAuth auth error:", error);
@@ -72,17 +76,21 @@ function AuthCallbackContent() {
                 message: error.message,
                 status: error.status,
               });
-              
+
               // Check again if user got authenticated despite the error
               // Sometimes the session is set even if exchangeCodeForSession returns an error
-              const { data: { session: sessionAfterError } } = await supabase.auth.getSession()
+              const {
+                data: { session: sessionAfterError },
+              } = await supabase.auth.getSession();
               if (sessionAfterError?.user) {
-                console.log('Session was set despite error, redirecting...')
-                router.push(next)
-                return
+                console.log("Session was set despite error, redirecting...");
+                router.push(next);
+                return;
               }
-              
-              setError(`Failed to authenticate: ${error.message}. Please try signing in again.`);
+
+              setError(
+                `Failed to authenticate: ${error.message}. Please try signing in again.`
+              );
               return;
             }
 
@@ -95,43 +103,59 @@ function AuthCallbackContent() {
               return;
             } else {
               // Check if session exists even if not returned
-              const { data: { session: fallbackSession } } = await supabase.auth.getSession()
+              const {
+                data: { session: fallbackSession },
+              } = await supabase.auth.getSession();
               if (fallbackSession?.user) {
-                router.push(next)
-                return
+                router.push(next);
+                return;
               }
-              
+
               setError("No session returned from authentication");
               return;
             }
           } catch (exchangeError) {
             console.error("Code exchange error:", exchangeError);
-            
+
             // Check if user got authenticated despite the error
-            const { data: { session: sessionAfterException } } = await supabase.auth.getSession()
+            const {
+              data: { session: sessionAfterException },
+            } = await supabase.auth.getSession();
             if (sessionAfterException?.user) {
-              console.log('Session was set despite exception, redirecting...')
-              router.push(next)
-              return
+              console.log("Session was set despite exception, redirecting...");
+              router.push(next);
+              return;
             }
-            
-            setError(`Authentication failed: ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}. Please try signing in again.`);
+
+            setError(
+              `Authentication failed: ${
+                exchangeError instanceof Error
+                  ? exchangeError.message
+                  : "Unknown error"
+              }. Please try signing in again.`
+            );
             return;
           }
         }
 
         // No valid authentication parameters found
         // But check one more time if user is authenticated (maybe from a previous attempt)
-        const { data: { session: finalCheckSession } } = await supabase.auth.getSession()
+        const {
+          data: { session: finalCheckSession },
+        } = await supabase.auth.getSession();
         if (finalCheckSession?.user) {
-          router.push(next)
-          return
+          router.push(next);
+          return;
         }
 
         setError("No authentication parameters found");
       } catch (err) {
         console.error("Auth callback error:", err);
-        setError(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        setError(
+          `An unexpected error occurred: ${
+            err instanceof Error ? err.message : "Unknown error"
+          }`
+        );
       } finally {
         setLoading(false);
       }
