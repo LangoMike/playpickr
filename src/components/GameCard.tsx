@@ -78,28 +78,6 @@ export function GameCard({ game }: GameCardProps) {
             </div>
             <span className="text-xs">{formatDate(game.released)}</span>
           </div>
-
-          {/* Platform Icons */}
-          {game.platforms && game.platforms.length > 0 && (
-            <div className="flex items-center gap-1 mt-2">
-              {game.platforms.slice(0, 4).map((platform, index) => (
-                <div
-                  key={index}
-                  className="w-4 h-4 bg-gray-600 rounded-sm flex items-center justify-center"
-                  title={platform.platform.name}
-                >
-                  <span className="text-xs text-white font-bold">
-                    {platform.platform.name.charAt(0)}
-                  </span>
-                </div>
-              ))}
-              {game.platforms.length > 4 && (
-                <span className="text-xs text-gray-400">
-                  +{game.platforms.length - 4}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </Link>

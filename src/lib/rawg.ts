@@ -71,6 +71,37 @@ export interface RAWGSearchResult {
   results: RAWGGame[]
 }
 
+export interface RAWGScreenshot {
+  id: number
+  image: string
+  width: number
+  height: number
+  is_deleted: boolean
+}
+
+export interface RAWGScreenshotResult {
+  count: number
+  next: string | null
+  previous: string | null
+  results: RAWGScreenshot[]
+}
+
+export interface RAWGTrailer {
+  id: number
+  name: string
+  preview: string
+  data: {
+    '480': string
+    max: string
+  }
+}
+
+export interface RAWGTrailerResult {
+  count: number
+  next: string | null
+  previous: string | null
+  results: RAWGTrailer[]
+}
 /**
  * Get RAWG API key from environment variables
  */
@@ -187,6 +218,52 @@ export async function getTrendingGames(
 
   const response = await fetch(
     `https://api.rawg.io/api/games?${params}`,
+    {
+      headers: {
+        'Accept': 'application/json',
+      },
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`RAWG API error: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+/**
+ * Fetch game screenshots from RAWG API
+ */
+export async function fetchGameScreenshots(
+  gameId: number
+): Promise<RAWGScreenshotResult> {
+  const apiKey = getRAWGApiKey()
+  const response = await fetch(
+    `https://api.rawg.io/api/games/${gameId}/screenshots?key=${apiKey}`,
+    {
+      headers: {
+        'Accept': 'application/json',
+      },
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`RAWG API error: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+/**
+ * Fetch game trailers/movies from RAWG API
+ */
+export async function fetchGameTrailers(
+  gameId: number
+): Promise<RAWGTrailerResult> {
+  const apiKey = getRAWGApiKey()
+  const response = await fetch(
+    `https://api.rawg.io/api/games/${gameId}/movies?key=${apiKey}`,
     {
       headers: {
         'Accept': 'application/json',

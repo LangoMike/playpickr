@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { RAWGGame } from "@/lib/rawg";
 import { GameInteractions } from "@/components/GameInteractions";
+import { GameImageCarousel } from "@/components/GameImageCarousel";
 import { Button } from "@/components/ui/button";
 
 interface GameDetailPageProps {
@@ -87,31 +90,12 @@ export function GameDetailPage({ game }: GameDetailPageProps) {
             <div className="lg:col-span-2 space-y-8">
               {/* Game Header */}
               <div className="space-y-4">
-                {/* Release Date and Platforms */}
+                {/* Release Date and Playtime */}
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
                   <span className="font-semibold text-white">
                     {formatDate(game.released)}
                   </span>
-                  {game.platforms && game.platforms.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      {game.platforms.slice(0, 6).map((platform, index) => (
-                        <div
-                          key={index}
-                          className="w-6 h-6 bg-gray-600 rounded-sm flex items-center justify-center"
-                          title={platform.platform.name}
-                        >
-                          <span className="text-xs text-white font-bold">
-                            {platform.platform.name.charAt(0)}
-                          </span>
-                        </div>
-                      ))}
-                      {game.platforms.length > 6 && (
-                        <span className="text-xs text-gray-400">
-                          +{game.platforms.length - 6}
-                        </span>
-                      )}
-                    </div>
-                  )}
+
                   {game.playtime && (
                     <span>AVERAGE PLAYTIME: {game.playtime} HOURS</span>
                   )}
@@ -169,6 +153,12 @@ export function GameDetailPage({ game }: GameDetailPageProps) {
                   </Button>
                 </div>
 
+                {/* Game Image Carousel */}
+                <GameImageCarousel
+                  gameId={game.id}
+                  mainImage={game.background_image}
+                />
+
                 {/* Rating and Rankings */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
@@ -197,10 +187,10 @@ export function GameDetailPage({ game }: GameDetailPageProps) {
 
                   <div className="flex gap-6 text-sm">
                     <span className="text-gray-400">
-                      #{Math.floor(Math.random() * 200) + 1} PLATFORMER
+                      #{(game.id % 200) + 1} PLATFORMER
                     </span>
                     <span className="text-gray-400">
-                      #{Math.floor(Math.random() * 10) + 1} TOP 2025
+                      #{(game.id % 10) + 1} TOP 2025
                     </span>
                   </div>
                 </div>
