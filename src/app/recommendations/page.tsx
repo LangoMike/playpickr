@@ -22,6 +22,7 @@ interface DatabaseGame {
   description?: string | null;
   released?: string | null;
   background_image?: string | null;
+  website?: string | null;
   rating?: number | null;
   rating_top?: number | null;
   metacritic?: number | null;
