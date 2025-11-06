@@ -15,6 +15,8 @@ function AuthCallbackContent() {
       try {
         setLoading(true);
 
+        // Use the shared client instance which should have access to the code verifier cookie
+
         // Get the next redirect URL
         const next = searchParams?.get("next") || "/dashboard";
 
@@ -42,35 +44,54 @@ function AuthCallbackContent() {
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
             // Success! Redirect to intended destination
-            window.location.href = next;
+            router.push(next);
             return;
           }
         }
 
-        // Check for code parameter (OAuth flow)
+        // Check for code parameter (OAuth flow with PKCE)
         const code = searchParams?.get("code");
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          // When using createBrowserClient, exchangeCodeForSession automatically
+          // retrieves the code verifier from cookies. The code verifier should have been
+          // stored when the OAuth flow was initiated.
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-          if (error) {
-            console.error("OAuth auth error:", error);
-            setError("Failed to authenticate with OAuth provider");
+            if (error) {
+              console.error("OAuth auth error:", error);
+              console.error("Error details:", {
+                message: error.message,
+                status: error.status,
+                code: (error as any).code
+              });
+              setError(`Failed to authenticate: ${error.message}. Please try signing in again.`);
+              return;
+            }
+
+            if (data.session) {
+              // Session is set, wait a moment for cookies to sync
+              await new Promise((resolve) => setTimeout(resolve, 500));
+
+              // Success! Redirect to intended destination
+              router.push(next);
+              return;
+            } else {
+              setError("No session returned from authentication");
+              return;
+            }
+          } catch (exchangeError) {
+            console.error("Code exchange error:", exchangeError);
+            setError(`Authentication failed: ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}. Please try signing in again.`);
             return;
           }
-
-          // Wait a moment for the session to be properly set
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Success! Redirect to intended destination
-          window.location.href = next;
-          return;
         }
 
         // No valid authentication parameters found
         setError("No authentication parameters found");
       } catch (err) {
         console.error("Auth callback error:", err);
-        setError("An unexpected error occurred during authentication");
+        setError(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         setLoading(false);
       }

@@ -1,15 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    // Create Supabase client with cookies from the request
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { success: false, error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    let responseToReturn: NextResponse | null = null
+    
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            if (!responseToReturn) {
+              responseToReturn = NextResponse.next()
+            }
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value)
+              responseToReturn!.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
     
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { 
           success: false, 
           error: 'Auth error', 
@@ -17,19 +49,21 @@ export async function GET(request: NextRequest) {
         },
         { status: 401 }
       )
+      return responseToReturn || errorResponse
     }
     
     if (!user) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { 
           success: false, 
           error: 'No user found' 
         },
         { status: 401 }
       )
+      return responseToReturn || errorResponse
     }
 
-    return NextResponse.json({
+    const successResponse = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -37,6 +71,7 @@ export async function GET(request: NextRequest) {
         created_at: user.created_at
       }
     })
+    return responseToReturn || successResponse
 
   } catch (error) {
     console.error('Error in test-auth API:', error)

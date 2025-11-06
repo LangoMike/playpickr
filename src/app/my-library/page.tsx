@@ -125,8 +125,16 @@ export default function MyLibraryPage() {
               you&apos;ve played.
             </CardDescription>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="gaming-button px-8 py-3">Browse Games</Button>
-              <Button className="gaming-button px-8 py-3">
+              <Button
+                className="gaming-button px-8 py-3"
+                onClick={() => router.push("/games")}
+              >
+                Browse Games
+              </Button>
+              <Button
+                className="gaming-button px-8 py-3"
+                onClick={() => router.push("/recommendations")}
+              >
                 Get Recommendations
               </Button>
             </div>
