@@ -10,8 +10,13 @@
 
 // Use @tensorflow/tfjs (browser version) which is much smaller than tfjs-node
 // This can load models from URLs (Supabase Storage, CDN, etc.)
-let tf: any = null;
-let model: any = null;
+import type * as tfjsType from '@tensorflow/tfjs';
+
+type TensorFlowModule = typeof tfjsType;
+type TensorFlowModel = tfjsType.LayersModel;
+
+let tf: TensorFlowModule | null = null;
+let model: TensorFlowModel | null = null;
 let metadata: ModelMetadata | null = null;
 
 // Initialize TensorFlow.js
@@ -64,8 +69,7 @@ export async function loadModel(): Promise<void> {
   if (!tf) {
     try {
       await initTensorFlow();
-    } catch (error) {
-      // TensorFlow not available - this is okay, we'll use popularity-based recommendations
+    } catch {
       console.warn('TensorFlow.js not available, will use popularity-based recommendations');
       return;
     }
@@ -248,13 +252,16 @@ export async function generateRecommendations(
 
     // Predict
     const prediction = model.predict([userTensor, gameTensor, featureTensor]);
-    const score = await prediction.data();
+    
+    // Handle prediction result (can be Tensor or Tensor[])
+    const predictionTensor = Array.isArray(prediction) ? prediction[0] : prediction;
+    const score = await predictionTensor.data();
 
     // Clean up tensors
     userTensor.dispose();
     gameTensor.dispose();
     featureTensor.dispose();
-    prediction.dispose();
+    predictionTensor.dispose();
 
     predictions.push({
       gameId: game.id,
