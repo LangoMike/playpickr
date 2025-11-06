@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './useAuth'
-import { supabase } from '@/lib/supabase'
 
 interface InteractionState {
   liked: boolean
@@ -59,21 +58,14 @@ export function useInteractions(gameId: string) {
     setState(prev => ({ ...prev, loading: true }))
 
     try {
-      // Get the current session to include auth headers
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        alert('Please sign in to interact with games')
-        setState(prev => ({ ...prev, loading: false }))
-        return
-      }
-
+      // Cookies are automatically sent with fetch requests
+      // The middleware will handle session refresh if needed
       const response = await fetch('/api/interactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
+        credentials: 'include', // Ensure cookies are sent
         body: JSON.stringify({
           gameId,
           action
@@ -83,9 +75,11 @@ export function useInteractions(gameId: string) {
       const result = await response.json()
       
       if (result.success) {
+        // Map action names to state keys
+        const stateKey = action === 'favorite' ? 'favorited' : action === 'like' ? 'liked' : action
         setState(prev => ({
           ...prev,
-          [action === 'favorite' ? 'favorited' : action]: result.action === 'added',
+          [stateKey]: result.action === 'added',
           loading: false
         }))
       } else {

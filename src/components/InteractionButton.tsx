@@ -29,7 +29,7 @@ const buttonConfig = {
   },
   played: {
     activeIcon: "✅",
-    inactiveIcon: "⭕",
+    inactiveIcon: "❓",
     activeText: "Played",
     inactiveText: "Played Before",
     activeClass: "bg-green-500 hover:bg-green-600",

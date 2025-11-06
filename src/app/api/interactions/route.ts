@@ -1,62 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    // Create Supabase client with cookies from the request
+    // This ensures cookies are properly read from the incoming request
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     
-    // Check for Authorization header first
-    const authHeader = request.headers.get('Authorization')
-    let user = null
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      // Use the token from the Authorization header
-      const token = authHeader.substring(7)
-      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
-      
-      if (!tokenError && tokenUser) {
-        user = tokenUser
-      }
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { success: false, error: 'Server configuration error' },
+        { status: 500 }
+      )
     }
+
+    let responseToReturn: NextResponse | null = null
     
-    // Fallback to session-based auth
-    if (!user) {
-      const { data: { user: sessionUser }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !sessionUser) {
-        return NextResponse.json(
-          { success: false, error: 'Authentication required' },
-          { status: 401 }
-        )
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            if (!responseToReturn) {
+              responseToReturn = NextResponse.next()
+            }
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value)
+              responseToReturn!.cookies.set(name, value, options)
+            })
+          },
+        },
       }
-      user = sessionUser
+    )
+    
+    // Check if user is authenticated via cookies
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      const errorResponse = NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+      return responseToReturn || errorResponse
     }
 
     const body = await request.json()
     const { gameId, action } = body
 
     if (!gameId || !action) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, error: 'Missing gameId or action' },
         { status: 400 }
       )
+      return responseToReturn || errorResponse
     }
 
     if (!['like', 'favorite', 'played'].includes(action)) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, error: 'Invalid action' },
         { status: 400 }
       )
+      return responseToReturn || errorResponse
     }
 
     // check if interaction already exists
-    const { data: existingInteraction } = await supabase
+    const { data: existingInteraction, error: queryError } = await supabase
       .from('user_interactions')
       .select('*')
       .eq('user_id', user.id)
       .eq('game_id', gameId)
       .eq('action', action)
-      .single()
+      .maybeSingle()
+
+    if (queryError) {
+      console.error('Error querying interactions:', queryError)
+      const errorResponse = NextResponse.json(
+        { success: false, error: `Failed to check interaction: ${queryError.message}` },
+        { status: 500 }
+      )
+      return responseToReturn || errorResponse
+    }
 
     if (existingInteraction) {
       // remove the interaction (toggle off)
@@ -66,17 +94,19 @@ export async function POST(request: NextRequest) {
         .eq('id', existingInteraction.id)
 
       if (deleteError) {
-        return NextResponse.json(
+        const errorResponse = NextResponse.json(
           { success: false, error: 'Failed to remove interaction' },
           { status: 500 }
         )
+        return responseToReturn || errorResponse
       }
 
-      return NextResponse.json({
+      const successResponse = NextResponse.json({
         success: true,
         action: 'removed',
         data: null
       })
+      return responseToReturn || successResponse
     } else {
       // add the interaction
       const { data: newInteraction, error: insertError } = await supabase
@@ -90,17 +120,20 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (insertError) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to add interaction' },
+        console.error('Error inserting interaction:', insertError)
+        const errorResponse = NextResponse.json(
+          { success: false, error: `Failed to add interaction: ${insertError.message}` },
           { status: 500 }
         )
+        return responseToReturn || errorResponse
       }
 
-      return NextResponse.json({
+      const successResponse = NextResponse.json({
         success: true,
         action: 'added',
         data: newInteraction
       })
+      return responseToReturn || successResponse
     }
 
   } catch (error) {
@@ -114,26 +147,60 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    // Create Supabase client with cookies from the request
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { success: false, error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    let responseToReturn: NextResponse | null = null
+    
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            if (!responseToReturn) {
+              responseToReturn = NextResponse.next()
+            }
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value)
+              responseToReturn!.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
     
     // check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, error: 'Authentication required' },
         { status: 401 }
       )
+      return responseToReturn || errorResponse
     }
 
     const { searchParams } = new URL(request.url)
     const gameId = searchParams.get('gameId')
 
     if (!gameId) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, error: 'Missing gameId' },
         { status: 400 }
       )
+      return responseToReturn || errorResponse
     }
 
     // get all interactions for this game
@@ -144,10 +211,11 @@ export async function GET(request: NextRequest) {
       .eq('game_id', gameId)
 
     if (error) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, error: 'Failed to fetch interactions' },
         { status: 500 }
       )
+      return responseToReturn || errorResponse
     }
 
     // transform to object for easier access
@@ -156,7 +224,7 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, boolean>)
 
-    return NextResponse.json({
+    const successResponse = NextResponse.json({
       success: true,
       data: {
         liked: interactionMap.like || false,
@@ -164,6 +232,7 @@ export async function GET(request: NextRequest) {
         played: interactionMap.played || false
       }
     })
+    return responseToReturn || successResponse
 
   } catch (error) {
     console.error('Error in interactions API:', error)
