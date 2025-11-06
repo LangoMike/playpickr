@@ -10,7 +10,79 @@
  */
 
 require('dotenv').config({ path: '.env.local' });
-const tf = require('@tensorflow/tfjs-node');
+
+// Always load tfjs-node first to register file system handler (even if native bindings fail)
+// This ensures model.save() with file:// protocol works
+let tfjsNode;
+try {
+  tfjsNode = require('@tensorflow/tfjs-node');
+  // File system handler is now registered
+} catch (nodeError) {
+  // If tfjs-node fails to load entirely, we'll handle it below
+  console.warn('⚠️  Could not load @tensorflow/tfjs-node module at all.');
+}
+
+// Try to use tfjs-node with native bindings, fallback to CPU-only if needed
+let tf;
+let usingCPUOnly = false;
+
+try {
+  // Use tfjs-node if available
+  if (tfjsNode) {
+    tf = tfjsNode;
+    
+    // Verify backend is loaded
+    const backend = tf.getBackend();
+    console.log('✓ Using TensorFlow.js Node.js backend (with native acceleration)');
+    console.log(`✓ Backend: ${backend}\n`);
+    
+    // Test that native bindings work
+    try {
+      const testTensor = tf.tensor2d([[1, 2], [3, 4]]);
+      const testResult = testTensor.mean().dataSync();
+      testTensor.dispose();
+      console.log('✓ Native bindings verified and working\n');
+    } catch (nativeError) {
+      // Native bindings failed but module loaded - use CPU mode
+      throw nativeError;
+    }
+  } else {
+    throw new Error('tfjs-node module not available');
+  }
+  
+} catch (error) {
+  console.warn('⚠️  Warning: Could not load @tensorflow/tfjs-node native bindings.');
+  console.warn('   Falling back to CPU-only mode (will be slower but will work).\n');
+  console.warn('   To fix and get faster training:');
+  console.warn('   1. Install Universal C Runtime: https://support.microsoft.com/en-us/topic/update-for-universal-c-runtime-in-windows-c0514201-7fe6-95a3-b0a5-287930f3560c');
+  console.warn('   2. Or install both Visual C++ Redistributable versions:');
+  console.warn('      - x64: https://aka.ms/vs/17/release/vc_redist.x64.exe');
+  console.warn('      - x86: https://aka.ms/vs/17/release/vc_redist.x86.exe');
+  console.warn('   3. Restart your computer and try again\n');
+  
+  // Fallback to CPU-only TensorFlow.js
+  try {
+    tf = require('@tensorflow/tfjs');
+    
+    // File system handler should already be registered from tfjs-node load attempt above
+    // If tfjs-node loaded even partially, the handler should be available
+    if (tfjsNode) {
+      console.log('✓ File system handler available for model saving');
+    }
+    
+    usingCPUOnly = true;
+    console.log('✓ Using CPU-only TensorFlow.js (slower but functional)');
+    console.log('   Backend: CPU\n');
+  } catch (fallbackError) {
+    console.error('❌ Failed to load TensorFlow.js.');
+    console.error('   Please check your installation.');
+    console.error('   Original error:', error.message);
+    console.error('   Fallback error:', fallbackError.message);
+    console.error('\n   Try reinstalling: npm install @tensorflow/tfjs @tensorflow/tfjs-node');
+    process.exit(1);
+  }
+}
+
 const fs = require('fs').promises;
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
@@ -30,15 +102,23 @@ const CONFIG = {
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Use service role key to bypass RLS (for admin scripts)
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase environment variables');
-  console.error('Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  console.error('Required: NEXT_PUBLIC_SUPABASE_URL');
+  console.error('And either: SUPABASE_SERVICE_ROLE_KEY (recommended) or NEXT_PUBLIC_SUPABASE_ANON_KEY');
   process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.log('✓ Using service role key (bypasses RLS)\n');
+} else {
+  console.warn('⚠️  Warning: Using anonymous key. RLS policies must allow reading user_interactions.\n');
+}
 
 /**
  * Load data from Supabase
@@ -59,18 +139,21 @@ async function loadData() {
   console.log(`✓ Found ${games.length} games`);
 
   // Load user interactions
-  const { data: interactions, error: interactionsError } = await supabase
+  const { data: interactions, error: interactionsError, count: interactionsCount } = await supabase
     .from('user_interactions')
-    .select('*');
+    .select('*', { count: 'exact' });
 
   if (interactionsError) {
     throw new Error(`Failed to load interactions: ${interactionsError.message}`);
   }
 
-  console.log(`✓ Found ${interactions.length} user interactions`);
+  const actualCount = interactions?.length || interactionsCount || 0;
+  console.log(`✓ Found ${actualCount} user interactions`);
 
-  // Get unique users
-  const users = [...new Set(interactions.map(i => i.user_id))];
+  // Get unique users (handle empty interactions array)
+  const users = interactions && interactions.length > 0 
+    ? [...new Set(interactions.map(i => i.user_id))]
+    : [];
   console.log(`✓ Found ${users.length} users\n`);
 
   // Validate data
@@ -81,11 +164,15 @@ async function loadData() {
     );
   }
 
-  if (interactions.length < CONFIG.minInteractions) {
-    throw new Error(
-      `Insufficient interactions: ${interactions.length} < ${CONFIG.minInteractions}. ` +
-      `Please add more user interactions (like, favorite, or played on games).`
-    );
+  const interactionCount = interactions?.length || 0;
+  if (interactionCount < CONFIG.minInteractions) {
+    console.error(`\n❌ Insufficient interactions: ${interactionCount} < ${CONFIG.minInteractions}`);
+    console.error(`   Please add more user interactions (like, favorite, or played on games).`);
+    console.error(`\n   If you have interactions in the database but they're not showing up:`);
+    console.error(`   1. Make sure SUPABASE_SERVICE_ROLE_KEY is set in .env.local`);
+    console.error(`   2. Check RLS policies on user_interactions table`);
+    console.error(`   3. Verify interactions exist in Supabase Dashboard`);
+    throw new Error(`Insufficient interactions: ${interactionCount} < ${CONFIG.minInteractions}`);
   }
 
   if (users.length < CONFIG.minUsers) {
@@ -134,6 +221,9 @@ function extractGameFeatures(games) {
   const genreList = Array.from(allGenres);
   const tagList = Array.from(allTags);
   const platformList = Array.from(allPlatforms);
+  
+  // Get top 20 most common tags (used for feature encoding)
+  const topTags = tagList.slice(0, 20);
 
   // Create feature vectors for each game
   const gameFeatures = games.map(game => {
@@ -151,7 +241,6 @@ function extractGameFeatures(games) {
     features.push(...genreVec);
 
     // One-hot encode tags (top 20 most common)
-    const topTags = tagList.slice(0, 20);
     const tagVec = new Array(topTags.length).fill(0);
     if (game.tags && Array.isArray(game.tags)) {
       game.tags.forEach(t => {
@@ -206,10 +295,16 @@ function prepareTrainingData(games, interactions, users, gameFeatures) {
   console.log('Preparing training data...\n');
 
   // Create mappings
-  const gameIdToIndex = new Map();
+  const gameIdToIndex = new Map();  // Maps database UUID -> index
+  const gameSlugToIndex = new Map(); // Maps slug -> index
   const userIdToIndex = new Map();
 
-  games.forEach((game, idx) => gameIdToIndex.set(game.id, idx));
+  games.forEach((game, idx) => {
+    gameIdToIndex.set(game.id, idx);      // Map by database UUID
+    if (game.slug) {
+      gameSlugToIndex.set(game.slug, idx); // Map by slug
+    }
+  });
   users.forEach((userId, idx) => userIdToIndex.set(userId, idx));
 
   // Create game feature lookup
@@ -220,12 +315,36 @@ function prepareTrainingData(games, interactions, users, gameFeatures) {
 
   // Build positive examples (user interacted with game)
   const positiveExamples = [];
+  let skippedInteractions = 0;
+  
   interactions.forEach(interaction => {
     const userIdx = userIdToIndex.get(interaction.user_id);
-    const gameIdx = gameIdToIndex.get(interaction.game_id);
-    const features = gameFeatureMap.get(interaction.game_id) || [];
+    
+    // Try to find game by database ID first, then by slug
+    let gameIdx = gameIdToIndex.get(interaction.game_id);
+    let gameId = interaction.game_id;
+    
+    if (gameIdx === undefined) {
+      // Try looking up by slug
+      gameIdx = gameSlugToIndex.get(interaction.game_id);
+      if (gameIdx !== undefined) {
+        // Found by slug, get the actual database ID
+        gameId = games[gameIdx].id;
+      }
+    }
+    
+    const features = gameFeatureMap.get(gameId) || [];
 
-    if (userIdx !== undefined && gameIdx !== undefined && features.length > 0) {
+    if (userIdx === undefined) {
+      skippedInteractions++;
+      console.warn(`  ⚠️  User ${interaction.user_id} not found in user index`);
+    } else if (gameIdx === undefined) {
+      skippedInteractions++;
+      console.warn(`  ⚠️  Game ${interaction.game_id} not found in game index (tried both ID and slug)`);
+    } else if (features.length === 0) {
+      skippedInteractions++;
+      console.warn(`  ⚠️  Game ${gameId} has no features`);
+    } else {
       // Weight different interaction types
       let weight = 1.0;
       if (interaction.action === 'favorite') weight = 1.5;
@@ -242,15 +361,29 @@ function prepareTrainingData(games, interactions, users, gameFeatures) {
     }
   });
 
-  console.log(`✓ Created ${positiveExamples.length} positive examples`);
+  if (skippedInteractions > 0) {
+    console.log(`  ⚠️  Skipped ${skippedInteractions} interactions (user/game not found or missing features)`);
+  }
+  console.log(`✓ Created ${positiveExamples.length} positive examples (before weighting)`);
 
   // Build negative examples (random games user hasn't interacted with)
-  const userInteractedGames = new Map();
+  const userInteractedGames = new Map(); // Maps user_id -> Set of game IDs/slugs
   interactions.forEach(interaction => {
     if (!userInteractedGames.has(interaction.user_id)) {
       userInteractedGames.set(interaction.user_id, new Set());
     }
+    // Add both the interaction game_id (could be slug or UUID) and the actual game.id
     userInteractedGames.get(interaction.user_id).add(interaction.game_id);
+    // Also add the slug if we found the game
+    const gameIdx = gameIdToIndex.get(interaction.game_id) !== undefined 
+      ? gameIdToIndex.get(interaction.game_id)
+      : gameSlugToIndex.get(interaction.game_id);
+    if (gameIdx !== undefined) {
+      userInteractedGames.get(interaction.user_id).add(games[gameIdx].id);
+      if (games[gameIdx].slug) {
+        userInteractedGames.get(interaction.user_id).add(games[gameIdx].slug);
+      }
+    }
   });
 
   const negativeExamples = [];
@@ -261,7 +394,11 @@ function prepareTrainingData(games, interactions, users, gameFeatures) {
     const randomGame = games[Math.floor(Math.random() * games.length)];
     const userInteracted = userInteractedGames.get(randomUser) || new Set();
 
-    if (!userInteracted.has(randomGame.id)) {
+    // Check if user has interacted with this game (by ID or slug)
+    const hasInteracted = userInteracted.has(randomGame.id) || 
+                         (randomGame.slug && userInteracted.has(randomGame.slug));
+
+    if (!hasInteracted) {
       const userIdx = userIdToIndex.get(randomUser);
       const gameIdx = gameIdToIndex.get(randomGame.id);
       const features = gameFeatureMap.get(randomGame.id) || [];
@@ -278,10 +415,49 @@ function prepareTrainingData(games, interactions, users, gameFeatures) {
     }
   }
 
-  console.log(`✓ Created ${negativeExamples.length} negative examples\n`);
+  console.log(`✓ Created ${negativeExamples.length} negative examples (before weighting)\n`);
 
-  // Combine and shuffle
-  const allExamples = [...positiveExamples, ...negativeExamples];
+  // Validate we have examples
+  if (positiveExamples.length === 0) {
+    throw new Error(
+      'No valid training examples created. ' +
+      'This usually means the game_ids in user_interactions don\'t match any games in the database. ' +
+      'Make sure the interactions reference games that exist in the games table.'
+    );
+  }
+
+  // Apply weights by duplicating examples (TensorFlow.js doesn't support sample weights)
+  // This gives more importance to favorites and played games
+  const weightedExamples = [];
+  
+  positiveExamples.forEach(example => {
+    // Round weight to get number of duplicates (favorite=1.5→2, played=1.2→1, like=1.0→1)
+    const duplicates = Math.round(example.weight);
+    for (let i = 0; i < duplicates; i++) {
+      weightedExamples.push({
+        ...example,
+        weight: 1.0 // Remove weight since we're duplicating instead
+      });
+    }
+  });
+  
+  negativeExamples.forEach(example => {
+    // Negative examples get less weight (0.5 weight = sometimes include, sometimes not)
+    const duplicates = Math.round(example.weight);
+    for (let i = 0; i < duplicates; i++) {
+      weightedExamples.push({
+        ...example,
+        weight: 1.0
+      });
+    }
+  });
+
+  console.log(`✓ Created ${weightedExamples.length} weighted training examples (after duplication)`);
+  console.log(`  - Positive examples: ${positiveExamples.length} → ${weightedExamples.filter(e => e.label === 1.0).length} (weighted)`);
+  console.log(`  - Negative examples: ${negativeExamples.length} → ${weightedExamples.filter(e => e.label === 0.0).length} (weighted)\n`);
+
+  // Shuffle
+  const allExamples = weightedExamples;
   for (let i = allExamples.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [allExamples[i], allExamples[j]] = [allExamples[j], allExamples[i]];
@@ -396,13 +572,18 @@ async function trainModel(model, trainingData) {
   const gameIndices = trainingData.examples.map(e => e.gameIdx);
   const features = trainingData.examples.map(e => e.features);
   const labels = trainingData.examples.map(e => e.label);
-  const weights = trainingData.examples.map(e => e.weight);
 
-  const userTensor = tf.tensor2d(userIndices, [userIndices.length, 1]);
-  const gameTensor = tf.tensor2d(gameIndices, [gameIndices.length, 1]);
-  const featureTensor = tf.tensor2d(features);
-  const labelTensor = tf.tensor2d(labels, [labels.length, 1]);
-  const weightTensor = tf.tensor1d(weights);
+  const numExamples = userIndices.length;
+  const featureSize = features[0]?.length || trainingData.featureSize;
+
+  if (numExamples === 0) {
+    throw new Error('No training examples available');
+  }
+
+  const userTensor = tf.tensor2d(userIndices, [numExamples, 1]);
+  const gameTensor = tf.tensor2d(gameIndices, [numExamples, 1]);
+  const featureTensor = tf.tensor2d(features, [numExamples, featureSize]);
+  const labelTensor = tf.tensor2d(labels, [numExamples, 1]);
 
   // Split into train/validation
   const splitIdx = Math.floor(userIndices.length * (1 - CONFIG.validationSplit));
@@ -411,14 +592,13 @@ async function trainModel(model, trainingData) {
   const trainGames = gameTensor.slice([0, 0], [splitIdx, 1]);
   const trainFeatures = featureTensor.slice([0, 0], [splitIdx, -1]);
   const trainLabels = labelTensor.slice([0, 0], [splitIdx, 1]);
-  const trainWeights = weightTensor.slice([0], [splitIdx]);
 
   const valUsers = userTensor.slice([splitIdx, 0], [-1, 1]);
   const valGames = gameTensor.slice([splitIdx, 0], [-1, 1]);
   const valFeatures = featureTensor.slice([splitIdx, 0], [-1, -1]);
   const valLabels = labelTensor.slice([splitIdx, 0], [-1, 1]);
 
-  // Train
+  // Train (weights are handled by duplicating examples, not sample weights)
   const history = await model.fit(
     [trainUsers, trainGames, trainFeatures],
     trainLabels,
@@ -436,8 +616,7 @@ async function trainModel(model, trainingData) {
             `val_acc: ${logs.val_acc.toFixed(4)}`
           );
         }
-      },
-      sampleWeight: trainWeights
+      }
     }
   );
 
@@ -446,12 +625,10 @@ async function trainModel(model, trainingData) {
   gameTensor.dispose();
   featureTensor.dispose();
   labelTensor.dispose();
-  weightTensor.dispose();
   trainUsers.dispose();
   trainGames.dispose();
   trainFeatures.dispose();
   trainLabels.dispose();
-  trainWeights.dispose();
   valUsers.dispose();
   valGames.dispose();
   valFeatures.dispose();
@@ -469,14 +646,47 @@ async function saveModel(model, metadata) {
   // Ensure directory exists
   await fs.mkdir(CONFIG.modelDir, { recursive: true });
 
-  // Save model
-  await model.save(`file://${CONFIG.modelDir}`);
+  try {
+    // Try to save model using file:// protocol
+    await model.save(`file://${CONFIG.modelDir}`);
+    console.log(`✓ Model saved to ${CONFIG.modelDir}/`);
+  } catch (saveError) {
+    // If file:// fails, try saving model weights manually
+    console.warn('⚠️  File system handler not available, saving model weights manually...');
+    
+    try {
+      // Save model topology
+      const modelTopology = model.toJSON();
+      const topologyPath = path.join(CONFIG.modelDir, 'model.json');
+      await fs.writeFile(topologyPath, JSON.stringify(modelTopology, null, 2));
+      
+      // Save weights
+      const weights = await model.getWeights();
+      const weightsData = await Promise.all(weights.map(async (weight, i) => {
+        const weightData = await weight.data();
+        const weightShape = weight.shape;
+        return {
+          name: `weight_${i}`,
+          data: Array.from(weightData),
+          shape: weightShape
+        };
+      }));
+      
+      const weightsPath = path.join(CONFIG.modelDir, 'weights.json');
+      await fs.writeFile(weightsPath, JSON.stringify(weightsData, null, 2));
+      
+      console.log(`✓ Model topology saved to ${topologyPath}`);
+      console.log(`✓ Model weights saved to ${weightsPath}`);
+      console.warn('⚠️  Note: Manual weight saving format. Model loading may need adjustment.');
+    } catch (manualSaveError) {
+      console.error('❌ Failed to save model:', manualSaveError.message);
+      throw new Error(`Model saving failed: ${saveError.message}. Manual save also failed: ${manualSaveError.message}`);
+    }
+  }
 
   // Save metadata
   const metadataPath = path.join(CONFIG.modelDir, 'metadata.json');
   await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
-
-  console.log(`✓ Model saved to ${CONFIG.modelDir}/`);
   console.log(`✓ Metadata saved to ${metadataPath}`);
 }
 
@@ -513,7 +723,15 @@ async function main() {
     console.log();
 
     // Train model
-    await trainModel(model, trainingData);
+    const history = await trainModel(model, trainingData);
+    
+    // Note about overfitting with small datasets
+    if (trainingData.numUsers < 5 || trainingData.examples.length < 200) {
+      console.log('\n⚠️  Note: Small dataset detected.');
+      console.log('   With limited data, the model may overfit (memorize training data).');
+      console.log('   This is expected and will improve as you add more users and interactions.');
+      console.log('   The model will still provide useful recommendations, especially for content-based features.\n');
+    }
 
     // Save model
     const metadata = {
@@ -540,10 +758,10 @@ async function main() {
     console.log('\n' + '='.repeat(60));
     console.log('✅ Training completed successfully!');
     console.log('='.repeat(60));
-    console.log('\nNext steps:');
-    console.log('1. Test the model by generating recommendations via the API');
-    console.log('2. Check the recommendations page in your app');
-    console.log('3. Monitor recommendation quality and retrain if needed\n');
+    if (usingCPUOnly) {
+      console.log('\n⚠️  Note: Training used CPU-only mode (slower).');
+      console.log('   For faster training, install Universal C Runtime or Visual C++ Redistributable.');
+    }
 
   } catch (error) {
     console.error('\n❌ Training failed:', error.message);

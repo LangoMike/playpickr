@@ -56,29 +56,43 @@ export default function GamesPage() {
       try {
         setGamesLoading(true);
 
-        let url: string;
         if (debouncedSearchQuery.trim()) {
           // Use search API if there's a search query
-          url = `/api/games/search?query=${encodeURIComponent(
+          const url = `/api/games/search?query=${encodeURIComponent(
             debouncedSearchQuery.trim()
           )}&page=${currentPage}&pageSize=${pageSize}`;
+
+          const response = await fetch(url);
+          if (response.ok) {
+            const data: RAWGSearchResult = await response.json();
+            setGames(data.results);
+            setPaginationData({
+              count: data.count,
+              next: data.next,
+              previous: data.previous,
+            });
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
         } else {
-          // Use trending API if no search query
-          url = `/api/games/trending?ordering=${currentOrder}&page=${currentPage}&pageSize=${pageSize}`;
-        }
-
-        const response = await fetch(url);
-        if (response.ok) {
-          const data: RAWGSearchResult = await response.json();
-          setGames(data.results);
-          setPaginationData({
-            count: data.count,
-            next: data.next,
-            previous: data.previous,
+          // Normal browsing without search
+          const params = new URLSearchParams({
+            ordering: currentOrder,
+            page: currentPage.toString(),
+            pageSize: pageSize.toString(),
           });
+          const url = `/api/games/trending?${params.toString()}`;
 
-          // Scroll to top when page changes or new data loads
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          const response = await fetch(url);
+          if (response.ok) {
+            const data: RAWGSearchResult = await response.json();
+            setGames(data.results);
+            setPaginationData({
+              count: data.count,
+              next: data.next,
+              previous: data.previous,
+            });
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
         }
       } catch (error) {
         console.error("Error fetching games:", error);
@@ -187,7 +201,11 @@ export default function GamesPage() {
                     onClick={() =>
                       setCurrentPage((prev) => Math.max(1, prev - 1))
                     }
-                    disabled={!paginationData.previous || gamesLoading}
+                    disabled={
+                      !paginationData.previous ||
+                      gamesLoading ||
+                      currentPage === 1
+                    }
                     className="gaming-button"
                   >
                     <svg

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GameCard } from "@/components/GameCard";
-import { RAWGGame, RAWGSearchResult } from "@/lib/rawg";
+import { RAWGGame, RAWGSearchResult, RAWGRandomGameResult } from "@/lib/rawg";
 import Image from "next/image";
 
 export default function Dashboard() {
@@ -15,6 +15,9 @@ export default function Dashboard() {
   const router = useRouter();
   const [games, setGames] = useState<RAWGGame[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
+  const [randomGames, setRandomGames] = useState<RAWGGame[]>([]);
+  const [randomGamesLoading, setRandomGamesLoading] = useState(false);
+  const [showRandomGames, setShowRandomGames] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,6 +47,22 @@ export default function Dashboard() {
       fetchTrendingGames();
     }
   }, [user]);
+
+  const handleGenerateRandomGames = async () => {
+    try {
+      setRandomGamesLoading(true);
+      const response = await fetch("/api/games/random?pageSize=12");
+      if (response.ok) {
+        const data: RAWGRandomGameResult = await response.json();
+        setRandomGames(data.results);
+        setShowRandomGames(true);
+      }
+    } catch (error) {
+      console.error("Error generating random games:", error);
+    } finally {
+      setRandomGamesLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -81,30 +100,6 @@ export default function Dashboard() {
             Ready to discover your next favorite game? Explore trending titles
             and find your perfect match.
           </p>
-        </div>
-      </section>
-
-      {/* User Stats Snapshot */}
-      <section className="mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="gaming-card">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
-              <div className="text-gray-300">Games in Library</div>
-            </CardContent>
-          </Card>
-          <Card className="gaming-card">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-yellow-400 mb-2">0</div>
-              <div className="text-gray-300">Favorites</div>
-            </CardContent>
-          </Card>
-          <Card className="gaming-card">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-green-400 mb-2">0</div>
-              <div className="text-gray-300">Games Played</div>
-            </CardContent>
-          </Card>
         </div>
       </section>
 
@@ -178,19 +173,63 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <Button className="w-full justify-start h-12 bg-gradient-to-br from-gray-800 via-gray-700 to-purple-900 border border-purple-500/20 text-white hover:from-gray-700 hover:via-gray-600 hover:to-purple-800 transition-all shadow-lg">
-                  🎲 Random Game Picker
-                </Button>
-              </div>
-              <div>
-                <Button className="w-full justify-start h-12 bg-gradient-to-br from-gray-800 via-gray-700 to-purple-900 border border-purple-500/20 text-white hover:from-gray-700 hover:via-gray-600 hover:to-purple-800 transition-all shadow-lg">
-                  📊 View My Stats
+                <Button
+                  className="w-full justify-start h-12 bg-gradient-to-br from-gray-800 via-gray-700 to-purple-900 border border-purple-500/20 text-white hover:from-gray-700 hover:via-gray-600 hover:to-purple-800 transition-all shadow-lg"
+                  onClick={handleGenerateRandomGames}
+                >
+                  🎲 Generate Random Games
                 </Button>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Random Games Section - Only shows when random games are generated */}
+      {showRandomGames && (
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                🎲 Random Games
+              </h2>
+              <p className="text-gray-400">
+                Discover something new with randomly selected games
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="text-gray-400 hover:text-white"
+              onClick={() => {
+                setShowRandomGames(false);
+                setRandomGames([]);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+
+          {randomGamesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <div key={index} className="gaming-card animate-pulse">
+                  <div className="h-48 bg-gray-600 rounded-t-lg"></div>
+                  <div className="p-4">
+                    <div className="h-6 bg-gray-600 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-600 rounded w-2/3"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {randomGames.map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* For You Section */}
       <section className="mb-12">

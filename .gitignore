@@ -44,5 +44,5 @@ supabase/
 *.tsbuildinfo
 next-env.d.ts
 
-# ML models (uncomment if you want to commit model files)
+# ML models - model still smaller than 50mb, so it's not worth hosting on Supabase Storage
 # models/

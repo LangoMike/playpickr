@@ -8,13 +8,22 @@ https://playpickr.vercel.app/
 
 ## Features
 
-- **Game Discovery**: Browse and search games from RAWG API
-- **User Library**: Save and organize games you've played, liked, or favorited
-- **ML-Powered Recommendations**: Get personalized game recommendations using a hybrid recommendation system
+- **Game Discovery**: Browse and search games from RAWG API with pagination and filtering
+- **Random Game Generator**: Discover new games with a random game generator that fetches games with ratings
+- **User Library**: Save and organize games you've played, liked, or favorited with a comprehensive library view
+- **Game Media Carousel**: View game screenshots and trailers in an interactive carousel
+- **ML-Powered Recommendations**: - Personalized game recommendations using a hybrid recommendation system
   - Collaborative filtering (user behavior patterns)
   - Content-based filtering (game features: genres, tags, platforms, ratings)
+  - Starting model trained and ready for further improvement with more user data
 - **Authentication**: Secure user authentication with Supabase Auth
 - **Interactive UI**: Modern, responsive interface built with Next.js and Tailwind CSS
+
+## Project Status
+
+**MVP Complete** - All core features have been implemented and are fully functional.  
+**Additional Features Complete** - Enhanced features including game media carousels, search functionality, and random game discovery are live.  
+**Recommendation System Complete** - The hybrid recommendation system is fully implemented with a trained starting model that will be further refined as more user interaction data becomes available.
 
 ## Tech Stack
 
@@ -61,26 +70,30 @@ RAWG_API_KEY=your_rawg_api_key
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
 ## Recommendation System
 
 ### Overview
 
-PlayPickr uses a hybrid recommendation system that combines:
+**Status: Production-Ready**
+
+PlayPickr uses a fully implemented hybrid recommendation system that combines:
 - **Collaborative Filtering**: Learns from user behavior patterns to find similar users
 - **Content-Based Filtering**: Uses game features (genres, tags, platforms, ratings) to recommend similar games
 
+### Current State
+
+The recommendation system is **fully functional** with a trained starting model. The initial model has been trained and is ready for use. As more user interaction data is collected, the model can be retrained to improve accuracy and personalization.
+
 ### Training the Model
 
-Before you can generate recommendations, you need to train the recommendation model:
+The initial model has been trained and is ready for production use. To retrain the model with updated data:
 
 1. **Ensure you have data**:
    - At least 50+ games in your database
    - At least 10+ user interactions (for single-user scenarios)
    - At least 100+ interactions across multiple users (recommended for best results)
 
-2. **Train the model**:
+2. **Retrain the model**:
 ```bash
 npm run train:recommendations
 ```
@@ -92,7 +105,7 @@ npm run train:recommendations
 
 ### Using Recommendations
 
-Once the model is trained:
+The recommendation system is live and ready to use:
 
 1. **Generate recommendations**:
    - Navigate to the Recommendations page in the app
@@ -102,6 +115,14 @@ Once the model is trained:
 2. **For new users** (cold start):
    - Users with no interactions will receive popularity-based recommendations
    - As users interact with games, recommendations become more personalized
+
+### Future Improvements
+
+As the platform grows and collects more user interaction data, the recommendation model will be periodically retrained to improve:
+- Recommendation accuracy
+- Personalization quality
+- Discovery of niche games
+- User satisfaction metrics
 
 ### Documentation
 
@@ -117,6 +138,7 @@ For detailed information about the recommendation system, see:
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues
 - `npm run train:recommendations` - Train the recommendation model
+- `npm run add:interaction-games` - Adds all new "interacted" games to games SQL table
 
 ## API Endpoints
 
@@ -127,12 +149,19 @@ For detailed information about the recommendation system, see:
 
 ### Games
 
-- `GET /api/games/trending` - Get trending games
+- `GET /api/games/trending` - Get trending games with pagination
+- `GET /api/games/search` - Search games by query
+- `GET /api/games/random` - Get random games with ratings
 - `GET /api/games/[slug]` - Get game details by slug
+- `GET /api/games/screenshots` - Get game screenshots
+- `GET /api/games/trailers` - Get game trailers
 
 ### Interactions
 
+- `GET /api/interactions` - Get user interactions for a game
 - `POST /api/interactions` - Create or update user interaction (like, favorite, played)
+- `GET /api/interactions/stats` - Get interaction statistics for current user
+- `GET /api/interactions/games` - Get games for a specific interaction type (liked, favorite, played)
 
 ## Database Schema
 
@@ -158,19 +187,6 @@ The application uses Supabase with the following main tables:
 - ESLint for code quality
 - Tailwind CSS for styling
 - Component-based architecture with React
-
-
-## Troubleshooting
-
-### Recommendation System Issues
-
-See **[TRAINING_GUIDE.md](./TRAINING_GUIDE.md)** for comprehensive troubleshooting guide covering:
-- Insufficient data errors
-- Low model accuracy
-- Missing model files
-- Cold start scenarios
-- Performance optimization
-
 
 ## Contributing
 

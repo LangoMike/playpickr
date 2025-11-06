@@ -65,7 +65,7 @@ export function GameCard({ game }: GameCardProps) {
           </h3>
 
           {/* Rating and Release Date */}
-          <div className="flex items-center justify-between text-sm text-gray-400">
+          <div className="flex items-center justify-between text-sm text-white-400">
             <div className="flex items-center gap-1">
               <svg
                 className="w-4 h-4 text-yellow-400"
@@ -76,7 +76,7 @@ export function GameCard({ game }: GameCardProps) {
               </svg>
               <span>{formatRating(game.rating)}</span>
             </div>
-            <span className="text-xs">{formatDate(game.released)}</span>
+            <span className="text-xs text-gray-400">{formatDate(game.released)}</span>
           </div>
         </div>
       </div>
