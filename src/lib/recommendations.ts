@@ -5,22 +5,27 @@
  */
 
 // Use dynamic import for tfjs-node to avoid SSR issues
-let tf: any;
-let path: any;
-let fs: any;
+import type * as tfjs from '@tensorflow/tfjs-node';
+import type * as pathModule from 'path';
+import type * as fsModule from 'fs/promises';
+
+let tf: typeof tfjs | null = null;
+let path: typeof pathModule | null = null;
+let fs: typeof fsModule | null = null;
 
 // Initialize TensorFlow.js Node backend
 async function initTensorFlow() {
   if (typeof window === 'undefined') {
     // Server-side: use tfjs-node
-    tf = await import('@tensorflow/tfjs-node');
-    path = await import('path');
-    fs = await import('fs/promises');
+    tf = await import('@tensorflow/tfjs-node') as typeof tfjs;
+    path = await import('path') as typeof pathModule;
+    fs = await import('fs/promises') as typeof fsModule;
   }
 }
 
-let model: any = null;
-let metadata: any = null;
+type TensorFlowModel = Awaited<ReturnType<typeof tfjs.loadLayersModel>>;
+let model: TensorFlowModel | null = null;
+let metadata: ModelMetadata | null = null;
 
 interface ModelMetadata {
   gameIdToIndex: Record<string, number>;
@@ -33,7 +38,10 @@ interface ModelMetadata {
   genreList: string[];
   tagList: string[];
   platformList: string[];
-  config: any;
+  config: {
+    topNRecommendations?: number;
+    [key: string]: unknown;
+  };
   trainedAt: string;
 }
 
@@ -51,6 +59,10 @@ export async function loadModel(): Promise<void> {
   }
 
   try {
+    if (!path || !fs) {
+      throw new Error('Path or fs module not initialized');
+    }
+    
     const modelDir = path.join(process.cwd(), 'models', 'recommendation-model');
     
     // Check if model exists
@@ -67,6 +79,9 @@ export async function loadModel(): Promise<void> {
     const metadataContent = await fs.readFile(metadataPath, 'utf-8');
     metadata = JSON.parse(metadataContent) as ModelMetadata;
 
+    if (!tf) {
+      throw new Error('TensorFlow not initialized');
+    }
     // Load model
     model = await tf.loadLayersModel(`file://${path.join(modelDir, 'model.json')}`);
     
@@ -77,10 +92,19 @@ export async function loadModel(): Promise<void> {
   }
 }
 
+interface GameFeatureInput {
+  genres?: Array<{ name: string } | string> | null;
+  tags?: Array<{ name: string } | string> | null;
+  rating?: number | null;
+  metacritic?: number | null;
+  playtime?: number | null;
+  released?: string | null;
+}
+
 /**
  * Extract game features (same as training script)
  */
-function extractGameFeatures(game: any): number[] {
+function extractGameFeatures(game: GameFeatureInput): number[] {
   if (!metadata) {
     throw new Error('Model metadata not loaded');
   }
@@ -90,9 +114,9 @@ function extractGameFeatures(game: any): number[] {
   // One-hot encode genres
   const genreVec = new Array(metadata.genreList.length).fill(0);
   if (game.genres && Array.isArray(game.genres)) {
-    game.genres.forEach((g: any) => {
-      const genreName = g.name || g;
-      const idx = metadata.genreList.indexOf(genreName);
+    game.genres.forEach((g) => {
+      const genreName = typeof g === 'string' ? g : (g.name || '');
+      const idx = metadata!.genreList.indexOf(genreName);
       if (idx >= 0) genreVec[idx] = 1;
     });
   }
@@ -101,9 +125,9 @@ function extractGameFeatures(game: any): number[] {
   // One-hot encode tags
   const tagVec = new Array(metadata.tagList.length).fill(0);
   if (game.tags && Array.isArray(game.tags)) {
-    game.tags.forEach((t: any) => {
-      const tagName = t.name || t;
-      const idx = metadata.tagList.indexOf(tagName);
+    game.tags.forEach((t) => {
+      const tagName = typeof t === 'string' ? t : (t.name || '');
+      const idx = metadata!.tagList.indexOf(tagName);
       if (idx >= 0) tagVec[idx] = 1;
     });
   }
@@ -138,10 +162,19 @@ function extractGameFeatures(game: any): number[] {
 /**
  * Generate recommendations for a user
  */
+interface GameWithId extends GameFeatureInput {
+  id: string;
+}
+
+interface UserInteraction {
+  game_id: string;
+  action: string;
+}
+
 export async function generateRecommendations(
   userId: string,
-  games: any[],
-  userInteractions: any[]
+  games: GameWithId[],
+  userInteractions: UserInteraction[]
 ): Promise<Array<{ gameId: string; score: number; reason: string }>> {
   if (!model || !metadata) {
     await loadModel();
@@ -179,13 +212,17 @@ export async function generateRecommendations(
 
     const features = extractGameFeatures(game);
 
+    if (!tf) {
+      throw new Error('TensorFlow not initialized');
+    }
+
     // Create input tensors
     const userTensor = tf.tensor2d([[userIndex]]);
     const gameTensor = tf.tensor2d([[gameIndex]]);
     const featureTensor = tf.tensor2d([features]);
 
     // Predict
-    const prediction = model.predict([userTensor, gameTensor, featureTensor]) as tf.Tensor;
+    const prediction = model.predict([userTensor, gameTensor, featureTensor]) as tfjs.Tensor;
     const score = await prediction.data();
 
     // Clean up tensors
@@ -206,14 +243,16 @@ export async function generateRecommendations(
   const topN = predictions.slice(0, metadata.config?.topNRecommendations || 20);
 
   // Generate reasons for recommendations
-  const recommendations = topN.map(({ gameId, score, features }) => {
+  const recommendations = topN.map(({ gameId, score }) => {
     const game = games.find(g => g.id === gameId);
     if (!game) return null;
 
     // Generate reason based on features
     let reason = 'Based on your preferences';
-    if (game.genres && game.genres.length > 0) {
-      const topGenres = game.genres.slice(0, 2).map((g: any) => g.name || g).join(', ');
+    if (game.genres && Array.isArray(game.genres) && game.genres.length > 0) {
+      const topGenres = game.genres.slice(0, 2).map((g) => {
+        return typeof g === 'string' ? g : (g.name || '');
+      }).join(', ');
       reason = `Similar genres: ${topGenres}`;
     }
 
@@ -231,7 +270,7 @@ export async function generateRecommendations(
  * Get popularity-based recommendations (for cold start)
  */
 export async function getPopularityRecommendations(
-  games: any[],
+  games: GameWithId[],
   limit: number = 20
 ): Promise<Array<{ gameId: string; score: number; reason: string }>> {
   // Sort by rating and playtime

@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 
 export function Header() {
   const { user, loading } = useAuth();
-  const router = useRouter();
 
   const handleSignOut = async () => {
     try {

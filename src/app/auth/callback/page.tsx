@@ -63,7 +63,6 @@ function AuthCallbackContent() {
               console.error("Error details:", {
                 message: error.message,
                 status: error.status,
-                code: (error as any).code
               });
               setError(`Failed to authenticate: ${error.message}. Please try signing in again.`);
               return;

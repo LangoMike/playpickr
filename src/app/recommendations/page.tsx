@@ -14,12 +14,29 @@ import {
 import { GameCard } from "@/components/GameCard";
 import { RAWGGame } from "@/lib/rawg";
 
+interface DatabaseGame {
+  id: string;
+  rawg_id?: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  released?: string | null;
+  background_image?: string | null;
+  rating?: number | null;
+  rating_top?: number | null;
+  metacritic?: number | null;
+  playtime?: number | null;
+  genres?: Array<{ id: number; name: string; slug: string }> | string[] | null;
+  tags?: Array<{ id: number; name: string; slug: string }> | string[] | null;
+  platforms?: Array<{ id: number; name: string; slug: string }> | null;
+}
+
 interface Recommendation {
   id: string;
   gameId: string;
   score: number;
   reason: string;
-  game: any;
+  game: DatabaseGame;
 }
 
 export default function RecommendationsPage() {
@@ -109,7 +126,7 @@ export default function RecommendationsPage() {
   }
 
   // Convert database game format to RAWGGame format for GameCard
-  const convertToRAWGGame = (game: any): RAWGGame => {
+  const convertToRAWGGame = (game: DatabaseGame): RAWGGame => {
     return {
       id: game.rawg_id || parseInt(game.id) || 0,
       name: game.name,
@@ -125,27 +142,28 @@ export default function RecommendationsPage() {
       metacritic: game.metacritic || null,
       playtime: game.playtime || 0,
       platforms: Array.isArray(game.platforms)
-        ? game.platforms.map((p: any) => ({
-            platform: {
-              id: p.id || 0,
-              name: p.name || p,
-              slug: p.slug || "",
-            },
-          }))
+        ? game.platforms.map((p) => {
+            const platform = typeof p === 'string' 
+              ? { id: 0, name: p, slug: "" }
+              : { id: p.id || 0, name: p.name || "", slug: p.slug || "" };
+            return {
+              platform,
+            };
+          })
         : [],
       genres: Array.isArray(game.genres)
-        ? game.genres.map((g: any) => ({
-            id: g.id || 0,
-            name: g.name || g,
-            slug: g.slug || "",
-          }))
+        ? game.genres.map((g) => {
+            return typeof g === 'string'
+              ? { id: 0, name: g, slug: "" }
+              : { id: g.id || 0, name: g.name || "", slug: g.slug || "" };
+          })
         : [],
       tags: Array.isArray(game.tags)
-        ? game.tags.map((t: any) => ({
-            id: t.id || 0,
-            name: t.name || t,
-            slug: t.slug || "",
-          }))
+        ? game.tags.map((t) => {
+            return typeof t === 'string'
+              ? { id: 0, name: t, slug: "" }
+              : { id: t.id || 0, name: t.name || "", slug: t.slug || "" };
+          })
         : [],
       developers: [],
       publishers: [],

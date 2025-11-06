@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-server';
  * GET /api/recommendations
  * Fetches recommendations for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
     

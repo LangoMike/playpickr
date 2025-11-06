@@ -3,7 +3,6 @@ import Link from "next/link";
 import { RAWGGame } from "@/lib/rawg";
 import { GameInteractions } from "@/components/GameInteractions";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface GameDetailPageProps {
   game: RAWGGame;
@@ -17,11 +16,6 @@ export function GameDetailPage({ game }: GameDetailPageProps) {
       month: "short",
       day: "numeric",
     });
-  };
-
-  const formatRating = (rating: number) => {
-    if (!rating) return "N/A";
-    return rating.toFixed(1);
   };
 
   const getRatingColor = (rating: number) => {
